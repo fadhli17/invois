@@ -1,0 +1,49 @@
+mongodb://localhost:27017/tempahan-kaunseling
+
+
+johndisk3_db_user
+
+mongodb+srv://johndisk3_db_user:<Mdfp@ss123>@cluster0.edlabc1.mongodb.net/
+
+
+Cara Run Aplikasi yang Betul:
+1. Run dari Root Directory:
+# Masuk ke direktori root
+cd /Users/apple/Downloads/react
+# Run kedua-dua server dan client serentak
+npm run dev
+
+2. Atau Run Secara Berasingan:
+Terminal 1 (Server):
+cd server
+npm run dev
+
+Terminal 2 (Client):
+cd client
+npm start
+
+3. Pastikan Dependencies Terinstall:
+Jika belum install dependencies, jalankan:
+npm run install-all
+
+�� Jika Perlu Restart:
+# Stop semua proses
+pkill -f "node.*index.js"
+pkill -f "react-scripts"
+
+# Tunggu 2 saat
+sleep 2
+
+# Run semula
+npm run dev
+
+
+echo 'export ANTHROPIC_AUTH_TOKEN="sk-S6uH6I8uqXrdJmgbu8nVr3FmSFyg21dzZgQO05y3iEf3uDpp"' >> ~/.zshrc
+echo 'export ANTHROPIC_BASE_URL="https://sg.claude.cursorpro.com.cn"' >> ~/.zshrc
+source ~/.zshrc
+
+
+
+echo 'export ANTHROPIC_AUTH_TOKEN="sk-S6uH6I8uqXrdJmgbu8nVr3FmSFyg21dzZgQO05y3iEf3uDpp"' >> ~/.bash_profile
+echo 'export ANTHROPIC_BASE_URL="https://sg.claude.cursorpro.com.cn"' >> ~/.bash_profile
+source ~/.bash_profile
