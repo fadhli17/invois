@@ -4,7 +4,184 @@ mongodb://localhost:27017/tempahan-kaunseling
 johndisk3_db_user
 
 mongodb+srv://johndisk3_db_user:<Mdfp@ss123>@cluster0.edlabc1.mongodb.net/
+mongodb+srv://jon:<db_password>@cluster0.ugztjby.mongodb.net/
+DhFBfHwLeO7v58Lj
 
+
+mongodb+srv://jon:<DhFBfHwLeO7v58Lj>@cluster0.ugztjby.mongodb.net/
+
+mongoexport --uri "mongodb+srv://jon:DhFBfHwLeO7v58Lj@cluster0.edlabc1.mongodb.net/invois" --collection invoices --out invoices.json
+
+
+john
+3h9wCFmjvevGb4jG
+
+mongosh "mongodb+srv://john:3h9wCFmjvevGb4jG@cluster0.edlabc1.mongodb.net/invois"
+
+mongoexport --uri "mongodb+srv://john:3h9wCFmjvevGb4jG@cluster0.edlabc1.mongodb.net/invois" --collection invoices --out invoices.json
+
+
+
+module.exports = {
+  apps: [
+    {
+      name: "invois-backend",
+      script: "./backend/server.js",
+      cwd: "/var/www/invois",
+      env: {
+        NODE_ENV: "production",
+        PORT: 3001,
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "1G",
+      error_file: "/var/log/pm2/invois-backend-error.log",
+      out_file: "/var/log/pm2/invois-backend-out.log",
+      log_file: "/var/log/pm2/invois-backend.log",
+    },
+    {
+      name: "invois-frontend",
+      script: "serve",
+      args: "-s build -l 3002",
+      cwd: "/var/www/invois/frontend",
+      env: {
+        NODE_ENV: "production",
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "512M",
+      error_file: "/var/log/pm2/invois-frontend-error.log",
+      out_file: "/var/log/pm2/invois-frontend-out.log",
+      log_file: "/var/log/pm2/invois-frontend.log",
+    },
+  ],
+};
+
+server {
+    listen 80;
+    server_name 98.88.19.52;
+
+    # Frontend (React)
+    location / {
+        proxy_pass http://localhost:3002;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Backend API
+    location /api/ {
+        proxy_pass http://localhost:3001/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # File uploads
+    location /uploads/ {
+        proxy_pass http://localhost:3001/uploads/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+sudo ln -sf /etc/nginx/sites-available/invois /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl restart nginx
+
+sudo certbot --nginx -d 98.88.19.52 -d 98.88.19.52
+
+module.exports = {
+  apps: [
+    {
+      name: "invois-backend",
+      script: "./backend/server.js",
+      cwd: "/var/www/invois",
+      env: {
+        NODE_ENV: "production",
+        PORT: 3001,
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "1G",
+      error_file: "/var/log/pm2/invois-backend-error.log",
+      out_file: "/var/log/pm2/invois-backend-out.log",
+      log_file: "/var/log/pm2/invois-backend.log",
+    },
+    {
+      name: "invois-frontend",
+      script: "npx",
+      args: ["serve", "-s", "build", "-l", "3002"],
+      cwd: "/var/www/invois/frontend",
+      env: {
+        NODE_ENV: "production",
+      },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "512M",
+      error_file: "/var/log/pm2/invois-frontend-error.log",
+      out_file: "/var/log/pm2/invois-frontend-out.log",
+      log_file: "/var/log/pm2/invois-frontend.log",
+    },
+  ],
+};
+
+
+#!/bin/bash
+
+echo "🔄 Updating application from GitHub..."
+
+# Navigate to app directory
+cd /var/www/invois
+
+# Fix permissions first
+sudo chown -R $USER:$USER /var/www/invois
+git config --global --add safe.directory /var/www/invois
+
+# Pull latest changes
+echo "📥 Pulling changes from GitHub..."
+git pull origin main
+
+# Install backend dependencies
+echo "�� Installing backend dependencies..."
+cd backend
+npm install --production
+
+# Install frontend dependencies and build
+echo "��️ Building frontend..."
+cd ../frontend
+npm install
+npm run build
+
+# Fix upload directory permissions
+echo "🔧 Fixing upload directory permissions..."
+sudo chown -R $USER:$USER /var/www/invois/backend/uploads/
+sudo chmod -R 755 /var/www/invois/backend/uploads/
+
+# Restart applications
+echo "🔄 Restarting applications..."
+pm2 restart all
+
+echo "✅ Update completed!"
+echo "�� Application status:"
+pm2 status
 
 Cara Run Aplikasi yang Betul:
 1. Run dari Root Directory:
