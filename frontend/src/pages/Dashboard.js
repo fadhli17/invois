@@ -399,7 +399,7 @@ const Dashboard = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold text-gray-900">
-                Salam hi Selamat datang, <span className="text-blue-600">{user?.fullName}</span>!
+                Selamat Salam, <span className="text-blue-600">{user?.fullName}</span>!
               </h1>
               <p className="text-lg text-gray-600">
                 Ringkasan pantas aktiviti dokumen anda
