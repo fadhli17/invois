@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const GroqMCPServer = require('../mcp/groq-mcp-server');
 // Using global fetch (Node 18+)
+
+// Initialize MCP Server
+const mcpServer = new GroqMCPServer();
 
 // Generate Terms and Conditions via Groq (LLM)
 router.post('/generate-terms', async (req, res) => {
@@ -98,6 +102,96 @@ Keperluan tambahan:
   } catch (error) {
     console.error('AI generate-terms error:', error?.response?.data || error.message);
     res.status(500).json({ message: 'Ralat semasa menjana Terma dan Syarat.' });
+  }
+});
+
+// AI Chat endpoint
+router.post('/process', async (req, res) => {
+  try {
+    const { message, userId } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Message diperlukan' 
+      });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User ID diperlukan' 
+      });
+    }
+
+    const context = { userId };
+    const result = await mcpServer.process(message, context);
+    
+    res.json({
+      success: true,
+      result
+    });
+    
+  } catch (error) {
+    console.error('AI process error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Ralat semasa memproses permintaan AI' 
+    });
+  }
+});
+
+// Get AI suggestions
+router.get('/suggestions', async (req, res) => {
+  try {
+    const suggestions = [
+      "Berapa jumlah revenue yang dibayar sahaja?",
+      "Tunjukkan semua invois yang tertunggak",
+      "Buat invois baru untuk pelanggan",
+      "Berapa sebut harga yang pending?",
+      "Siapa pelanggan terbaik saya?",
+      "Analisis invois bulan ini",
+      "Tambah pelanggan baru"
+    ];
+    
+    res.json({
+      success: true,
+      suggestions
+    });
+    
+  } catch (error) {
+    console.error('AI suggestions error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Ralat semasa mendapatkan suggestions' 
+    });
+  }
+});
+
+// Test AI connection
+router.get('/test', async (req, res) => {
+  try {
+    const apiKey = process.env.GROQ_API_KEY;
+    
+    if (!apiKey) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'GROQ_API_KEY tidak ditetapkan' 
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'AI server berfungsi dengan baik',
+      hasApiKey: true
+    });
+    
+  } catch (error) {
+    console.error('AI test error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Ralat semasa test AI connection' 
+    });
   }
 });
 
