@@ -10,13 +10,23 @@ DhFBfHwLeO7v58Lj
 
 mongodb+srv://jon:<DhFBfHwLeO7v58Lj>@cluster0.ugztjby.mongodb.net/
 
-mongoexport --uri "mongodb+srv://jon:DhFBfHwLeO7v58Lj@cluster0.edlabc1.mongodb.net/invois" --collection invoices --out invoices.json
+mongoexport --uri "mongodb+srv://jon:Hjp3fAWdvvPR5Gbs.edlabc1.mongodb.net/invois" --collection invoices --out invoices.json
+
+
+mongoexport --uri="mongodb+srv://jon:Mdfp@ss12345678@cluster0.ugztjby.mongodb.net/invois" \
+  --collection=customers \
+  --out=customers.json \
+  --pretty
+
+
+mongoexport --uri="mongodb+srv://john:clp0wxUj5cO64IN7@cluster0.edlabc1.mongodb.net/invois"   --
+collection=invoices   --out=invoices.json   --pretty
+
 
 
 john
 3h9wCFmjvevGb4jG
 
-mongosh "mongodb+srv://john:3h9wCFmjvevGb4jG@cluster0.edlabc1.mongodb.net/invois"
 
 mongoexport --uri "mongodb+srv://john:3h9wCFmjvevGb4jG@cluster0.edlabc1.mongodb.net/invois" --collection invoices --out invoices.json
 
@@ -182,6 +192,41 @@ pm2 restart all
 echo "✅ Update completed!"
 echo "�� Application status:"
 pm2 status
+
+
+
+
+#!/bin/bash
+
+echo "🔧 Fixing all issues..."
+
+# Fix permissions
+echo "�� Fixing permissions..."
+sudo chown -R $USER:$USER /var/www/invois/
+sudo chmod -R 755 /var/www/invois/
+
+# Create upload directories
+echo "📁 Creating upload directories..."
+mkdir -p /var/www/invois/backend/uploads/{logos,qrcodes,system}
+sudo chown -R $USER:$USER /var/www/invois/backend/uploads/
+sudo chmod -R 755 /var/www/invois/backend/uploads/
+
+# Stop all PM2 processes
+echo "⏹️ Stopping PM2 processes..."
+pm2 stop all
+pm2 delete all
+
+# Start applications
+echo "🚀 Starting applications..."
+cd /var/www/invois
+pm2 start ecosystem.config.js
+pm2 save
+
+echo "✅ All fixes applied!"
+echo "�� Application status:"
+pm2 status
+
+
 
 Cara Run Aplikasi yang Betul:
 1. Run dari Root Directory:
