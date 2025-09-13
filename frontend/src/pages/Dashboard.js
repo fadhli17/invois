@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { formatCurrency } from '../utils/helpers';
@@ -24,6 +24,72 @@ import {
 } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config/api';
+
+// Hook untuk animasi nombor
+const useAnimatedNumber = (targetValue, duration = 2000) => {
+  const [currentValue, setCurrentValue] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const animationRef = useRef(null);
+  const startTimeRef = useRef(null);
+
+  useEffect(() => {
+    if (targetValue === 0) {
+      setCurrentValue(0);
+      return;
+    }
+
+    setIsAnimating(true);
+    setCurrentValue(0);
+
+    const animate = (timestamp) => {
+      if (!startTimeRef.current) {
+        startTimeRef.current = timestamp;
+      }
+
+      const elapsed = timestamp - startTimeRef.current;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function untuk animasi yang lebih smooth
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      const newValue = targetValue * easeOutQuart;
+      
+      setCurrentValue(newValue);
+
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      } else {
+        setCurrentValue(targetValue);
+        setIsAnimating(false);
+        startTimeRef.current = null;
+      }
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [targetValue, duration]);
+
+  return { currentValue, isAnimating };
+};
+
+// Komponen untuk memaparkan nombor dengan animasi
+const AnimatedNumber = ({ value, duration = 2000, className = "", isCurrency = false }) => {
+  const { currentValue, isAnimating } = useAnimatedNumber(value, duration);
+  
+  const displayValue = isCurrency 
+    ? formatCurrency(Math.round(currentValue))
+    : Math.round(currentValue).toLocaleString('ms-MY');
+
+  return (
+    <span className={`${className} ${isAnimating ? 'animate-pulse' : ''}`}>
+      {displayValue}
+    </span>
+  );
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -495,7 +561,9 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Jumlah Dokumen</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalInvoices}</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  <AnimatedNumber value={stats.totalInvoices} duration={1500} />
+                </p>
                 <p className="text-xs text-gray-500 mt-1">Semua dokumen</p>
               </div>
               <div className="p-3 bg-blue-100 rounded-xl">
@@ -509,8 +577,12 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Jumlah Dibayar</p>
-                <p className="text-3xl font-bold text-green-600">{formatCurrency(stats.paidAmount)}</p>
-                <p className="text-xs text-gray-500 mt-1">{stats.paidInvoices} dokumen</p>
+                <p className="text-3xl font-bold text-green-600">
+                  <AnimatedNumber value={stats.paidAmount} duration={1800} isCurrency={true} />
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  <AnimatedNumber value={stats.paidInvoices} duration={1200} /> dokumen
+                </p>
               </div>
               <div className="p-3 bg-green-100 rounded-xl">
                 <FiCheckCircle className="w-6 h-6 text-green-600" />
@@ -523,8 +595,12 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Menunggu Bayaran</p>
-                <p className="text-3xl font-bold text-amber-600">{formatCurrency(stats.pendingAmount)}</p>
-                <p className="text-xs text-gray-500 mt-1">{stats.pendingInvoices} dokumen</p>
+                <p className="text-3xl font-bold text-amber-600">
+                  <AnimatedNumber value={stats.pendingAmount} duration={2000} isCurrency={true} />
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  <AnimatedNumber value={stats.pendingInvoices} duration={1400} /> dokumen
+                </p>
               </div>
               <div className="p-3 bg-amber-100 rounded-xl">
                 <FiClock className="w-6 h-6 text-amber-600" />
@@ -546,8 +622,12 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-red-600">{formatCurrency(stats.overdueAmount)}</p>
-                <p className="text-xs text-gray-500 mt-1">{stats.overdueInvoices} dokumen</p>
+                <p className="text-3xl font-bold text-red-600">
+                  <AnimatedNumber value={stats.overdueAmount} duration={2200} isCurrency={true} />
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  <AnimatedNumber value={stats.overdueInvoices} duration={1600} /> dokumen
+                </p>
               </div>
               <div className="p-3 bg-red-100 rounded-xl">
                 <FiAlertCircle className="w-6 h-6 text-red-600" />
@@ -674,8 +754,12 @@ const Dashboard = () => {
                   <span className="text-sm font-medium text-gray-700">Dibayar</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold text-gray-900">{statusCounts.paid}</div>
-                  <div className="text-xs text-gray-500">{Math.round((statusCounts.paid / statusTotal) * 100)}%</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    <AnimatedNumber value={statusCounts.paid} duration={1300} />
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <AnimatedNumber value={Math.round((statusCounts.paid / statusTotal) * 100)} duration={1500} />%
+                  </div>
                 </div>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -691,8 +775,12 @@ const Dashboard = () => {
                   <span className="text-sm font-medium text-gray-700">Dihantar</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold text-gray-900">{statusCounts.sent}</div>
-                  <div className="text-xs text-gray-500">{Math.round((statusCounts.sent / statusTotal) * 100)}%</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    <AnimatedNumber value={statusCounts.sent} duration={1400} />
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <AnimatedNumber value={Math.round((statusCounts.sent / statusTotal) * 100)} duration={1600} />%
+                  </div>
                 </div>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -708,8 +796,12 @@ const Dashboard = () => {
                   <span className="text-sm font-medium text-gray-700">Draf</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold text-gray-900">{statusCounts.draft}</div>
-                  <div className="text-xs text-gray-500">{Math.round((statusCounts.draft / statusTotal) * 100)}%</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    <AnimatedNumber value={statusCounts.draft} duration={1500} />
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <AnimatedNumber value={Math.round((statusCounts.draft / statusTotal) * 100)} duration={1700} />%
+                  </div>
                 </div>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -725,8 +817,12 @@ const Dashboard = () => {
                   <span className="text-sm font-medium text-gray-700">Lewat Tempoh</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold text-gray-900">{statusCounts.overdue}</div>
-                  <div className="text-xs text-gray-500">{Math.round((statusCounts.overdue / statusTotal) * 100)}%</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    <AnimatedNumber value={statusCounts.overdue} duration={1600} />
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <AnimatedNumber value={Math.round((statusCounts.overdue / statusTotal) * 100)} duration={1800} />%
+                  </div>
                 </div>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -752,8 +848,12 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-bold text-orange-600">{stats.quotesCount}</div>
-                <div className="text-sm text-gray-500">{formatCurrency(stats.quotesAmount)}</div>
+                <div className="text-3xl font-bold text-orange-600">
+                  <AnimatedNumber value={stats.quotesCount} duration={1700} />
+                </div>
+                <div className="text-sm text-gray-500">
+                  <AnimatedNumber value={stats.quotesAmount} duration={1900} isCurrency={true} />
+                </div>
               </div>
             </div>
           </div>
@@ -770,8 +870,12 @@ const Dashboard = () => {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-bold text-blue-600">{stats.invoicesCount}</div>
-                <div className="text-sm text-gray-500">{formatCurrency(stats.invoicesAmount)}</div>
+                <div className="text-3xl font-bold text-blue-600">
+                  <AnimatedNumber value={stats.invoicesCount} duration={1800} />
+                </div>
+                <div className="text-sm text-gray-500">
+                  <AnimatedNumber value={stats.invoicesAmount} duration={2000} isCurrency={true} />
+                </div>
               </div>
             </div>
           </div>
