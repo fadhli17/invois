@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import AIChat from './AIChat';
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -60,6 +61,9 @@ const Layout = () => {
           </div>
         </main>
       </div>
+      
+      {/* AI Chat Component */}
+      <AIChat />
     </div>
   );
 };
