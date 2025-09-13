@@ -370,9 +370,9 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* CSS Animations */}
-      <style>{`
+      <style jsx>{`
         @keyframes ripple {
           to {
             transform: scale(4);

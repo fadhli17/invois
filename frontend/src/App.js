@@ -34,7 +34,7 @@ const ProtectedRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
-const PublicRoute = ({ children }) => {
+const PublicRoute = ({ children, allowAuthenticated = false }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
@@ -43,6 +43,11 @@ const PublicRoute = ({ children }) => {
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
       </div>
     );
+  }
+
+  // If allowAuthenticated is true, show the component even if authenticated
+  if (allowAuthenticated) {
+    return children;
   }
 
   return !isAuthenticated ? children : <Navigate to="/dashboard" />;
@@ -76,7 +81,7 @@ function App() {
               <Route
                 path="/register"
                 element={
-                  <PublicRoute>
+                  <PublicRoute allowAuthenticated={true}>
                     <Register />
                   </PublicRoute>
                 }

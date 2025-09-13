@@ -277,7 +277,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, collapsed, setCollapsed }) => {
           <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
             <span className="text-white font-bold text-xs">SI</span>
           </div>
-          {(!collapsed || !isDesktop) && (
+          {(!isDesktop || !collapsed) && (
             <div>
               <h1 className={`font-semibold text-base transition-colors duration-200 ${
                 isDarkMode ? 'text-gray-100' : 'text-gray-800'
@@ -319,7 +319,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, collapsed, setCollapsed }) => {
       </div>
 
       {/* Search Bar */}
-      {(!collapsed || !isDesktop) && (
+      {(!isDesktop || !collapsed) && (
         <div ref={searchRef} className={`px-3 py-3 border-b relative transition-colors duration-200 ${
           isDarkMode ? 'border-gray-700' : 'border-gray-200'
         }`}>
@@ -477,7 +477,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, collapsed, setCollapsed }) => {
                       }`} />
                     </div>
                     
-                    {(!collapsed || !isDesktop) && (
+                    {(!isDesktop || !collapsed) && (
                       <span className="truncate font-medium">
                         {item.name}
                       </span>
@@ -498,7 +498,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, collapsed, setCollapsed }) => {
       </div>
 
       {/* Quick Actions */}
-      {(!collapsed || !isDesktop) && (
+      {(!isDesktop || !collapsed) && (
         <div className="px-3 py-3 border-t border-gray-200">
           <div className="space-y-2">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
@@ -527,7 +527,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, collapsed, setCollapsed }) => {
       )}
 
       {/* Theme Toggle */}
-      {(!collapsed || !isDesktop) && (
+      {(!isDesktop || !collapsed) && (
         <div className={`px-3 py-2 border-b transition-colors duration-200 ${
           isDarkMode ? 'border-gray-700' : 'border-gray-200'
         }`}>
@@ -545,7 +545,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, collapsed, setCollapsed }) => {
             ) : (
               <FiMoon className="w-4 h-4" />
             )}
-            {(!collapsed || !isDesktop) && (
+            {(!isDesktop || !collapsed) && (
               <span>{isDarkMode ? 'Mod Cerah' : 'Mod Gelap'}</span>
             )}
           </button>
@@ -577,7 +577,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, collapsed, setCollapsed }) => {
               </div>
             )}
           </div>
-          {(!collapsed || !isDesktop) && (
+          {(!isDesktop || !collapsed) && (
             <div className="flex-1 min-w-0">
               <p className={`text-sm font-semibold truncate transition-colors duration-200 ${
                 isDarkMode ? 'text-gray-100' : 'text-gray-800'

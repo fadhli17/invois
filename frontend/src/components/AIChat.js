@@ -12,10 +12,8 @@ import {
   FiChevronUp
 } from 'react-icons/fi';
 import { API_BASE_URL } from '../config/api';
-import { useAuth } from '../context/AuthContext';
 
 const AIChat = () => {
-  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -66,7 +64,9 @@ const AIChat = () => {
     try {
       const response = await axios.post(`${API_BASE_URL}/api/ai/process`, {
         message: message,
-        userId: user?._id || user?.id
+        context: {
+          timestamp: new Date().toISOString()
+        }
       });
 
       if (response.data.success) {
@@ -105,7 +105,7 @@ const AIChat = () => {
   };
 
   const handleSuggestionClick = (suggestion) => {
-    sendMessage(suggestion);
+    setInput(suggestion.example);
   };
 
   const clearChat = () => {
@@ -181,16 +181,17 @@ const AIChat = () => {
                     
                     {/* Quick Suggestions */}
                     <div className="space-y-2">
-                      {suggestions.slice(0, 2).map((suggestion, index) => (
+                      {suggestions.slice(0, 2).map((suggestion) => (
                         <button
-                          key={`suggestion-${index}`}
-                          onClick={() => sendMessage(suggestion)}
+                          key={suggestion.id}
+                          onClick={() => handleSuggestionClick(suggestion)}
                           className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-sm"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-lg">💡</span>
+                            <span className="text-lg">{suggestion.icon}</span>
                             <div>
-                              <div className="font-medium text-gray-900">{suggestion}</div>
+                              <div className="font-medium text-gray-900">{suggestion.title}</div>
+                              <div className="text-gray-600 text-xs">{suggestion.example}</div>
                             </div>
                           </div>
                         </button>
@@ -284,13 +285,13 @@ const AIChat = () => {
                 {messages.length > 0 && (
                   <div className="flex justify-between items-center mt-2">
                     <div className="flex gap-2">
-                      {suggestions.slice(0, 2).map((suggestion, index) => (
+                      {suggestions.slice(0, 2).map((suggestion) => (
                         <button
-                          key={`quick-action-${index}`}
-                          onClick={() => sendMessage(suggestion)}
+                          key={suggestion.id}
+                          onClick={() => handleSuggestionClick(suggestion)}
                           className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                         >
-                          💡 {suggestion.substring(0, 20)}...
+                          {suggestion.icon} {suggestion.title}
                         </button>
                       ))}
                     </div>

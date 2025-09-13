@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCustomer } from '../context/CustomerContext';
-import { FiPlus, FiSearch, FiEdit, FiTrash2, FiEye, FiFilter, FiUsers, FiUserCheck, FiUserX } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiEdit, FiTrash2, FiEye, FiFilter, FiUsers, FiUserCheck, FiUserX, FiRefreshCw } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 const Customers = () => {
@@ -21,6 +21,7 @@ const Customers = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [actionMenu, setActionMenu] = useState({ isOpen: false, customer: null });
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     fetchCustomers({ page: currentPage, search: searchTerm, status: statusFilter });
@@ -58,6 +59,21 @@ const Customers = () => {
     setActionMenu({ isOpen: false, customer: null });
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        fetchCustomers({ page: currentPage, search: searchTerm, status: statusFilter }),
+        fetchCustomerStats()
+      ]);
+      toast.success('Data pelanggan telah dikemas kini!');
+    } catch (error) {
+      toast.error('Gagal mengemas kini data pelanggan');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('ms-MY', {
       style: 'currency',
@@ -88,13 +104,26 @@ const Customers = () => {
             <h1 className="text-3xl font-bold text-blue-900">Pelanggan</h1>
             <p className="mt-1 text-blue-600">Urus maklumat pelanggan anda</p>
           </div>
-          <Link
-            to="/customers/new"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <FiPlus className="w-4 h-4 mr-2" />
-            Tambah Pelanggan
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className={`inline-flex items-center px-4 py-2 bg-white border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors ${
+                isRefreshing ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              title="Segar semula data"
+            >
+              <FiRefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Mengemas kini...' : 'Segar Semula'}
+            </button>
+            <Link
+              to="/customers/new"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <FiPlus className="w-4 h-4 mr-2" />
+              Tambah Pelanggan
+            </Link>
+          </div>
         </div>
       </div>
 

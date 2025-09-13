@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { FiUser, FiLock, FiEye, FiEyeOff, FiMail, FiInfo, FiCheckCircle, FiShield, FiUserPlus } from 'react-icons/fi';
+import { FiUser, FiLock, FiEye, FiEyeOff, FiMail, FiInfo, FiCheckCircle, FiShield, FiUserPlus, FiArrowRight, FiStar } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
 const Register = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [userData, setUserData] = useState(null);
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
   const { register, handleSubmit, watch, formState: { errors } } = useForm();
@@ -20,12 +22,21 @@ const Register = () => {
     const result = await registerUser(data);
     
     if (result.success) {
-      toast.success(result.message);
-      navigate('/dashboard');
+      setUserData(data);
+      setShowSuccessModal(true);
+      // Don't auto navigate - let user see the popup first
+      // setTimeout(() => {
+      //   navigate('/dashboard');
+      // }, 3000);
     } else {
       toast.error(result.message);
     }
     setLoading(false);
+  };
+
+  const handleCloseModal = () => {
+    setShowSuccessModal(false);
+    navigate('/dashboard');
   };
 
   return (
@@ -250,6 +261,93 @@ const Register = () => {
           <span>© {new Date().getFullYear()} Invois</span>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={handleCloseModal}
+          ></div>
+          
+          {/* Modal */}
+          <div className="relative w-full max-w-md animate-in zoom-in-95 slide-in-from-bottom-4 duration-500">
+            <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
+              {/* Header with gradient */}
+              <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-8 py-6 relative overflow-hidden">
+                {/* Background decoration */}
+                <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-500/20"></div>
+                <div className="absolute -top-10 -right-10 w-20 h-20 bg-white/10 rounded-full"></div>
+                <div className="absolute -bottom-5 -left-5 w-16 h-16 bg-white/10 rounded-full"></div>
+                
+                <div className="relative flex items-center justify-center">
+                  <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    <FiCheckCircle className="w-10 h-10 text-white animate-pulse" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="px-8 py-6 text-center">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Pendaftaran Berjaya!
+                </h2>
+                <p className="text-gray-600 mb-4">
+                  Selamat datang ke sistem pengurusan invois kami
+                </p>
+                
+                {/* User info card */}
+                <div className="bg-gray-50 rounded-2xl p-4 mb-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                      <FiUser className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-semibold text-gray-900">{userData?.fullName}</p>
+                      <p className="text-sm text-gray-500">@{userData?.username}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <FiMail className="w-4 h-4" />
+                    <span>{userData?.email}</span>
+                  </div>
+                </div>
+                
+                {/* Next steps */}
+                <div className="bg-blue-50 rounded-2xl p-4 mb-6">
+                  <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                    <FiStar className="w-4 h-4" />
+                    Langkah Seterusnya
+                  </h3>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• Kemas kini profil anda</li>
+                    <li>• Tambah maklumat syarikat</li>
+                    <li>• Mula cipta invois pertama</li>
+                  </ul>
+                </div>
+                
+                {/* Auto redirect countdown */}
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mb-4">
+                  <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                  <span>Mengalihkan ke Dashboard dalam 3 saat...</span>
+                </div>
+                
+                {/* Action buttons */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCloseModal}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 hover:shadow-lg"
+                  >
+                    <FiArrowRight className="w-4 h-4" />
+                    Ke Dashboard
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
