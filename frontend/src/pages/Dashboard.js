@@ -372,7 +372,7 @@ const Dashboard = () => {
   return (
     <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* CSS Animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes ripple {
           to {
             transform: scale(4);
@@ -387,6 +387,22 @@ const Dashboard = () => {
           animation: refreshPulse 1s ease-in-out infinite;
         }
       `}</style>
+
+<style>{`
+  @keyframes ripple {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+  @keyframes refreshPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  .refresh-pulse {
+    animation: refreshPulse 1s ease-in-out infinite;
+  }
+`}</style>
       
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-40">

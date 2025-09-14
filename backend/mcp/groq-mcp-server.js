@@ -5,11 +5,14 @@ const Customer = require('../models/Customer');
 
 class GroqMCPServer {
   constructor() {
-    this.groq = new Groq({
-      apiKey: ''//api key from groq
-    });
-    
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      throw new Error('GROQ_API_KEY tidak ditemui dalam environment variables');
+    }
+
+    this.groq = new Groq({ apiKey });
     this.model = 'llama-3.1-8b-instant';
+    // Initialize available tools once
     this.tools = this.getTools();
   }
 
@@ -517,10 +520,15 @@ Context: ${JSON.stringify(context)}`;
       });
 
       return response;
-    } catch (error) {
-      console.error('Groq API Error:', error);
-      throw new Error('Gagal memproses permintaan AI');
-    }
+   } catch (error) {
+  console.error('Groq API Error:', error);
+  console.error('Error details:', {
+    message: error.message,
+    status: error.status,
+    code: error.code
+  });
+  throw new Error(`Gagal memproses permintaan AI: ${error.message}`);
+}
   }
 
   // Handle tool calls

@@ -12,8 +12,10 @@ import {
   FiChevronUp
 } from 'react-icons/fi';
 import { API_BASE_URL } from '../config/api';
+import { useAuth } from '../context/AuthContext';
 
 const AIChat = () => {
+  const { token, isAuthenticated } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -36,19 +38,63 @@ const AIChat = () => {
     loadSuggestions();
   }, []);
 
+  // Test API connection when authenticated
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      testAPIConnection();
+    }
+  }, [isAuthenticated, token]);
+
   const loadSuggestions = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/ai/suggestions`);
+      const response = await axios.get(`${API_BASE_URL}/api/ai/suggestions`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
+      });
       if (response.data.success) {
         setSuggestions(response.data.suggestions);
       }
     } catch (error) {
-      console.error('Error loading suggestions:', error);
+      console.error('Error loading suggestions:', error?.response?.data || error.message);
+    }
+  };
+
+  // Test API connection
+  const testAPIConnection = async () => {
+    try {
+      console.log('🔍 Testing API connection...');
+      console.log('API URL:', `${API_BASE_URL}/api/ai/suggestions`);
+      console.log('Token exists:', !!token);
+      console.log('Is authenticated:', isAuthenticated);
+      
+      const response = await axios.get(`${API_BASE_URL}/api/ai/suggestions`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
+      });
+      console.log('✅ API Connection Test Success:', response.data);
+      return true;
+    } catch (error) {
+      console.error('❌ API Connection Test Failed:', error);
+      console.error('Error details:', {
+        status: error?.response?.status,
+        data: error?.response?.data,
+        message: error?.message
+      });
+      return false;
     }
   };
 
   const sendMessage = async (message = input) => {
     if (!message.trim() || loading) return;
+
+    if (!isAuthenticated || !token) {
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        type: 'ai',
+        content: 'Sila log masuk untuk menggunakan AI.',
+        isError: true,
+        timestamp: new Date().toISOString()
+      }]);
+      return;
+    }
 
     const userMessage = {
       id: Date.now(),
@@ -62,12 +108,18 @@ const AIChat = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/ai/process`, {
-        message: message,
-        context: {
-          timestamp: new Date().toISOString()
+      const response = await axios.post(
+        `${API_BASE_URL}/api/ai/process`,
+        {
+          message: message,
+          context: {
+            timestamp: new Date().toISOString()
+          }
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
         }
-      });
+      );
 
       if (response.data.success) {
         const aiMessage = {
@@ -83,11 +135,24 @@ const AIChat = () => {
         throw new Error(response.data.message);
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('=== AI CHAT ERROR DEBUG ===');
+      console.error('Full error:', error);
+      console.error('Error response:', error?.response);
+      console.error('Error data:', error?.response?.data);
+      console.error('Error status:', error?.response?.status);
+      console.error('Error message:', error?.message);
+      console.error('API URL:', `${API_BASE_URL}/api/ai/process`);
+      console.error('Token exists:', !!token);
+      console.error('Is authenticated:', isAuthenticated);
+      console.error('================================');
+      
+      const data = error?.response?.data;
+      const serverMsg = (data && (data.error || data.message)) || error.message;
+      
       const errorMessage = {
         id: Date.now() + 1,
         type: 'ai',
-        content: 'Maaf, berlaku ralat semasa memproses permintaan anda. Sila cuba lagi.',
+        content: `Debug: ${serverMsg || error.message} (Status: ${error?.response?.status || 'Unknown'})`,
         isError: true,
         timestamp: new Date().toISOString()
       };
@@ -112,12 +177,28 @@ const AIChat = () => {
     setMessages([]);
   };
 
+  const escapeHtml = (str) =>
+    String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
   const formatMessage = (content) => {
-    // Simple formatting for better display
-    return content
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\n/g, '<br>');
+    // Support both string and structured tool_result content
+    if (typeof content === 'string') {
+      return content
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+    }
+    try {
+      const pretty = JSON.stringify(content, null, 2);
+      return `<pre class="whitespace-pre-wrap text-sm">${escapeHtml(pretty)}</pre>`;
+    } catch (e) {
+      return '<em>(Tidak dapat memaparkan hasil)</em>';
+    }
   };
 
   return (
