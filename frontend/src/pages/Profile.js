@@ -473,7 +473,7 @@ const Profile = () => {
                         {passwordSuccess ? (
                           <div className="flex items-center justify-center gap-1">
                             <FiCheck className="w-4 h-4" />
-                            Berjaya!
+                            Berjaya update data!
                           </div>
                         ) : passwordLoading ? (
                           <div className="flex items-center justify-center gap-1">
