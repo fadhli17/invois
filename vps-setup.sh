@@ -31,13 +31,23 @@ else
     echo -e "${GREEN}✅ Node.js already installed${NC}"
 fi
 
-# Install MongoDB (if not already installed)
+# Install MongoDB (fixed version)
 if ! command -v mongod &> /dev/null; then
     echo -e "${BLUE}📥 Installing MongoDB...${NC}"
+    
+    # Install libssl1.1 first
+    echo -e "${YELLOW}�� Installing libssl1.1...${NC}"
+    wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.20_amd64.deb
+    sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.20_amd64.deb
+    sudo apt-get install -f
+    
+    # Install MongoDB 6.0
     wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
     echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
     sudo apt-get update
     sudo apt-get install -y mongodb-org
+    
+    # Start and enable MongoDB
     sudo systemctl start mongod
     sudo systemctl enable mongod
 else
@@ -78,7 +88,7 @@ if ! command -v ufw &> /dev/null; then
     sudo ufw allow 80
     sudo ufw allow 443
     sudo ufw allow 3000
-    sudo ufw allow 9000
+    sudo ufw allow 3001
     sudo ufw --force enable
 else
     echo -e "${GREEN}✅ UFW already installed${NC}"
@@ -105,10 +115,6 @@ echo -e "${YELLOW}📦 Installing project dependencies...${NC}"
 cd backend && npm install && cd ..
 cd frontend && npm install && cd ..
 
-# Build frontend
-echo -e "${YELLOW}🔨 Building frontend...${NC}"
-cd frontend && npm run build && cd ..
-
 # Create SuperAdmin account
 echo -e "${BLUE}👤 Creating SuperAdmin account...${NC}"
 cd backend && node scripts/createSuperAdmin.js && cd ..
@@ -126,7 +132,7 @@ module.exports = {
       instances: 1,
       env: {
         NODE_ENV: 'production',
-        PORT: 9000,
+        PORT: 3001,
         JWT_SECRET: 'your-super-secret-jwt-key-change-this-in-production',
         MONGODB_URI: 'mongodb://localhost:27017/invois',
         GROQ_API_KEY: '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'
@@ -159,7 +165,7 @@ echo -e "${BLUE}⚙️  Creating Nginx configuration...${NC}"
 sudo tee /etc/nginx/sites-available/invois << 'NGINXEOF'
 server {
     listen 80;
-    server_name 98.88.17.102;
+    server_name 98.88.17.102;  # VPS IP
 
     # Frontend
     location / {
@@ -176,7 +182,7 @@ server {
 
     # Backend API
     location /api {
-        proxy_pass http://localhost:9000;
+        proxy_pass http://localhost:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';

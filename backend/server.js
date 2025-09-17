@@ -10,93 +10,58 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'http://localhost:9000',
+    'http://localhost:3001',
+    'http://localhost:3002',
     'http://127.0.0.1:3000',
-    'http://127.0.0.1:9000',
-    'http://98.88.17.102',
-    'http://98.88.17.102:3000',
-    'http://98.88.17.102:9000',
-    'https://98.88.17.102',
-    'https://98.88.17.102:3000',
-    'https://98.88.17.102:9000'
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:3002',
+    'http://192.168.68.102:3002',
+    'http://98.88.17.102',           // VPS IP
+    'http://98.88.17.102:3000',      // VPS Frontend
+    'http://98.88.17.102:3001',      // VPS Backend
+    'https://98.88.17.102',          // VPS HTTPS
+    'https://98.88.17.102:3000',     // VPS HTTPS Frontend
+    'https://98.88.17.102:3001'      // VPS HTTPS Backend
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with']
 }));
 
+// Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../frontend/build')));
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-const customerRoutes = require('./routes/customers');
-const invoiceRoutes = require('./routes/invoices');
-const logoRoutes = require('./routes/logos');
-const uploadRoutes = require('./routes/uploads');
-const aiRoutes = require('./routes/ai');
-const superAdminRoutes = require('./routes/superAdmin');
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/customers', require('./routes/customers'));
+app.use('/api/invoices', require('./routes/invoices'));
+app.use('/api/logos', require('./routes/logos'));
+app.use('/api/ai', require('./routes/ai'));
+app.use('/api/superadmin', require('./routes/superAdmin'));
 
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/customers', customerRoutes);
-app.use('/api/invoices', invoiceRoutes);
-app.use('/api/logos', logoRoutes);
-app.use('/api/uploads', uploadRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/superadmin', superAdminRoutes);
+// Serve static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Serve React app
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
-});
-
-// MongoDB connection
+// Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/invois', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-});
-
-mongoose.connection.on('connected', async () => {
+})
+.then(() => {
   console.log('Connected to MongoDB');
-  
-  // Initialize default SuperAdmin
-  try {
-    const SuperAdmin = require('./models/SuperAdmin');
-    const existingSuperAdmin = await SuperAdmin.findOne({ username: 'superadmin' });
-    
-    if (!existingSuperAdmin) {
-      const newSuperAdmin = new SuperAdmin({
-        username: 'superadmin',
-        email: 'superadmin@invois.com',
-        password: 'SuperAdmin123!',
-        fullName: 'System Super Administrator',
-        role: 'superadmin',
-        permissions: {
-          userManagement: true,
-          systemSettings: true,
-          dataAccess: true,
-          aiManagement: true
-        }
-      });
-      await newSuperAdmin.save();
-      console.log('✅ SuperAdmin account created successfully!');
-    } else {
-      console.log('✅ SuperAdmin account already exists');
-    }
-  } catch (error) {
-    console.error('❌ Error creating SuperAdmin:', error);
-  }
+})
+.catch((error) => {
+  console.error('MongoDB connection error:', error);
 });
 
-mongoose.connection.on('error', (err) => {
-  console.error('MongoDB connection error:', err);
-});
-
-const PORT = process.env.PORT || 9000;
+// Start server
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌐 Access: http://98.88.17.102:${PORT}`);
   console.log(`🌐 Access locally: http://localhost:${PORT}`);
 });
+
+module.exports = app;
