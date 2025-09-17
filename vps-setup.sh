@@ -35,10 +35,10 @@ fi
 if ! command -v mongod &> /dev/null; then
     echo -e "${BLUE}📥 Installing MongoDB...${NC}"
     
-    # Install libssl1.1 first
+    # Install libssl1.1 first (fixed URL)
     echo -e "${YELLOW}�� Installing libssl1.1...${NC}"
-    wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.20_amd64.deb
-    sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.20_amd64.deb
+    wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.21_amd64.deb
+    sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.21_amd64.deb
     sudo apt-get install -f
     
     # Install MongoDB 6.0
