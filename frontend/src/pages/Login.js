@@ -2,15 +2,58 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { FiUser, FiLock, FiEye, FiEyeOff, FiInfo, FiCheckCircle, FiShield, FiLogOut } from 'react-icons/fi';
+import { FiUser, FiLock, FiEye, FiEyeOff, FiInfo, FiCheckCircle, FiShield, FiLogOut, FiAlertTriangle, FiXCircle } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [userStatus, setUserStatus] = useState(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, formState: { errors }, watch } = useForm();
+  const watchedUsername = watch('username');
+
+  // Function to check user status
+  const checkUserStatus = async (username) => {
+    if (!username || username.length < 3) {
+      setUserStatus(null);
+      return;
+    }
+
+    setCheckingStatus(true);
+    try {
+      const response = await fetch(`http://localhost:3001/api/superadmin/check-user-status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username })
+      });
+      
+      const data = await response.json();
+      setUserStatus(data);
+    } catch (error) {
+      console.error('Error checking user status:', error);
+      setUserStatus(null);
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
+  // Debounced username check
+  React.useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (watchedUsername) {
+        checkUserStatus(watchedUsername);
+      } else {
+        setUserStatus(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [watchedUsername]);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -95,15 +138,70 @@ const Login = () => {
                     <p id="password-error" className="mt-1 text-xs text-red-600">{errors.password.message}</p>
                   )}
                 </div>
+
+                {/* User Status Display */}
+                {userStatus && (
+                  <div className={`mt-3 p-3 rounded-lg border ${
+                    userStatus.success && userStatus.user?.isActive 
+                      ? 'bg-green-50 border-green-200' 
+                      : 'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {checkingStatus ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                      ) : userStatus.success && userStatus.user?.isActive ? (
+                        <FiCheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <FiXCircle className="h-4 w-4 text-red-600" />
+                      )}
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${
+                          userStatus.success && userStatus.user?.isActive 
+                            ? 'text-green-800' 
+                            : 'text-red-800'
+                        }`}>
+                          {userStatus.success ? userStatus.message : 'Pengguna tidak ditemui'}
+                        </p>
+                        {userStatus.success && userStatus.user && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {userStatus.user.fullName} • {userStatus.user.email}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
-              className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:from-primary-600 hover:to-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? 'Sedang memproses...' : 'Log Masuk'}
-            </button>
+                disabled={loading || (userStatus && userStatus.success && !userStatus.user?.isActive)}
+                className={`inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                  userStatus && userStatus.success && !userStatus.user?.isActive
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700'
+                }`}
+              >
+                {loading ? 'Sedang memproses...' : 
+                 (userStatus && userStatus.success && !userStatus.user?.isActive) ? 'Akaun Dinyahaktifkan' : 
+                 'Log Masuk'}
+              </button>
+
+              {/* Account Deactivated Info */}
+              {userStatus && userStatus.success && !userStatus.user?.isActive && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <FiAlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-medium text-red-800">Akaun Dinyahaktifkan</h3>
+                      <p className="text-xs text-red-700 mt-1">
+                        Akaun anda telah dinyahaktifkan oleh pentadbir sistem. 
+                        Sila hubungi pentadbir untuk mengaktifkan semula akaun anda.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-3">
                 <p className="text-center text-sm text-gray-600">
@@ -119,6 +217,18 @@ const Login = () => {
                     Reset di sini
                   </Link>
                 </p>
+
+                {/* SuperAdmin Access Button */}
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="text-center text-xs text-gray-500 mb-3">Akses Pentadbir</p>
+                  <Link 
+                    to="/superadmin/login"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2"
+                  >
+                    <FiShield className="h-4 w-4" />
+                    Portal SuperAdmin
+                  </Link>
+                </div>
               </div>
             </form>
           </div>

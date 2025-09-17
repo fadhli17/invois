@@ -19,6 +19,10 @@ import Profile from './pages/Profile';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import InvoicePrint from './pages/InvoicePrint';
+import SuperAdminLogin from './pages/SuperAdminLogin';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import UserManagement from './pages/UserManagement';
+import SuperAdminLayout from './components/SuperAdminLayout';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -102,6 +106,18 @@ function App() {
                   </PublicRoute>
                 }
               />
+              <Route
+                path="/superadmin/login"
+                element={<SuperAdminLogin />}
+              />
+              <Route
+                path="/superadmin"
+                element={<SuperAdminLayout />}
+              >
+                <Route path="dashboard" element={<SuperAdminDashboard />} />
+                <Route path="users" element={<UserManagement />} />
+                <Route path="settings" element={<SuperAdminDashboard />} />
+              </Route>
               <Route
                 path="/"
                 element={

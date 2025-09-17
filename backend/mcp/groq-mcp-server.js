@@ -7,13 +7,30 @@ class GroqMCPServer {
   constructor() {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      throw new Error('GROQ_API_KEY tidak ditemui dalam environment variables');
-    }
-
+      console.warn('GROQ_API_KEY tidak ditemui, menggunakan mode fallback');
+      this.groq = null;
+      this.model = 'llama-3.1-8b-instant';
+    } else {
     this.groq = new Groq({ apiKey });
     this.model = 'llama-3.1-8b-instant';
+    }
     // Initialize available tools once
     this.tools = this.getTools();
+  }
+
+  // Update API key at runtime and reinitialize client
+  setApiKey(newKey) {
+    try {
+      if (newKey && typeof newKey === 'string' && newKey.trim()) {
+        this.groq = new Groq({ apiKey: newKey.trim() });
+        process.env.GROQ_API_KEY = newKey.trim();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to set Groq API key:', err.message);
+      return false;
+    }
   }
 
   // Tools yang AI boleh guna
@@ -110,9 +127,30 @@ class GroqMCPServer {
             properties: {
               search: {
                 type: 'string',
-                description: 'Search term for customer name or email'
+                description: 'Search term for customer name, company, or email. Can be partial name like "ali" to find "Ali Ahmad", "Ali Sdn Bhd", etc.'
               }
             }
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'searchCustomers',
+          description: 'Search customers by partial name, company, or email with detailed results',
+          parameters: {
+            type: 'object',
+            properties: {
+              searchTerm: {
+                type: 'string',
+                description: 'Partial search term (e.g., "ali", "ahmad", "sdn") to find customers'
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum number of results to return (default: 20)'
+              }
+            },
+            required: ['searchTerm']
           }
         }
       },
@@ -393,6 +431,192 @@ class GroqMCPServer {
             }
           }
         }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'generateTermsAndConditions',
+          description: 'Generate terms and conditions for invoices based on business context',
+          parameters: {
+            type: 'object',
+            properties: {
+              businessType: {
+                type: 'string',
+                description: 'Type of business (e.g., "IT services", "retail", "consulting")'
+              },
+              notes: {
+                type: 'string',
+                description: 'Additional context or specific requirements for terms'
+              },
+              language: {
+                type: 'string',
+                enum: ['malay', 'english'],
+                description: 'Language for the terms and conditions'
+              }
+            },
+            required: ['businessType']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'getMonthlyTrends',
+          description: 'Analyze monthly trends for revenue, invoices, and customer growth',
+          parameters: {
+            type: 'object',
+            properties: {
+              months: {
+                type: 'number',
+                description: 'Number of months to analyze (default: 6)'
+              },
+              includeProjections: {
+                type: 'boolean',
+                description: 'Include future projections based on trends'
+              }
+            }
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'searchDocumentsByDate',
+          description: 'Search for invoices and quotes within a specific date range',
+          parameters: {
+            type: 'object',
+            properties: {
+              startDate: {
+                type: 'string',
+                description: 'Start date in YYYY-MM-DD format'
+              },
+              endDate: {
+                type: 'string',
+                description: 'End date in YYYY-MM-DD format'
+              },
+              documentType: {
+                type: 'string',
+                enum: ['invoice', 'quote', 'all'],
+                description: 'Type of document to search for'
+              },
+              status: {
+                type: 'string',
+                enum: ['draft', 'sent', 'paid', 'overdue', 'all'],
+                description: 'Status filter for documents'
+              }
+            },
+            required: ['startDate', 'endDate']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'getTopCustomers',
+          description: 'Get top customers by revenue, number of invoices, or recent activity',
+          parameters: {
+            type: 'object',
+            properties: {
+              sortBy: {
+                type: 'string',
+                enum: ['revenue', 'count', 'recent'],
+                description: 'Sort customers by revenue, invoice count, or recent activity'
+              },
+              limit: {
+                type: 'number',
+                description: 'Number of top customers to return (default: 10)'
+              },
+              timeframe: {
+                type: 'string',
+                description: 'Time period for analysis (e.g., "last_30_days", "this_year")'
+              }
+            }
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'getRevenueForecast',
+          description: 'Generate revenue forecast based on historical data and trends',
+          parameters: {
+            type: 'object',
+            properties: {
+              months: {
+                type: 'number',
+                description: 'Number of months to forecast (default: 3)'
+              },
+              confidence: {
+                type: 'string',
+                enum: ['conservative', 'moderate', 'optimistic'],
+                description: 'Confidence level for the forecast'
+              }
+            }
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'getOverdueAnalysis',
+          description: 'Analyze overdue invoices and provide collection insights',
+          parameters: {
+            type: 'object',
+            properties: {
+              includeSuggestions: {
+                type: 'boolean',
+                description: 'Include suggestions for collection actions'
+              },
+              groupBy: {
+                type: 'string',
+                enum: ['customer', 'amount', 'days_overdue'],
+                description: 'Group overdue invoices by customer, amount, or days overdue'
+              }
+            }
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'getBusinessInsights',
+          description: 'Generate comprehensive business insights and recommendations',
+          parameters: {
+            type: 'object',
+            properties: {
+              focus: {
+                type: 'string',
+                enum: ['revenue', 'customers', 'efficiency', 'growth'],
+                description: 'Focus area for insights'
+              },
+              includeRecommendations: {
+                type: 'boolean',
+                description: 'Include actionable recommendations'
+              }
+            }
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'getDocumentStats',
+          description: 'Get comprehensive statistics about all documents',
+          parameters: {
+            type: 'object',
+            properties: {
+              documentType: {
+                type: 'string',
+                enum: ['invoice', 'quote', 'all'],
+                description: 'Type of documents to analyze'
+              },
+              timeframe: {
+                type: 'string',
+                description: 'Time period for statistics'
+              }
+            }
+          }
+        }
       }
     ];
   }
@@ -400,6 +624,11 @@ class GroqMCPServer {
   // Process user message dengan Groq
   async processMessage(message, context = {}) {
     try {
+      // Check if Groq is available
+      if (!this.groq) {
+        return this.handleFallbackResponse(message, context);
+      }
+
       const systemPrompt = `Anda adalah AI assistant untuk sistem pengurusan dokumen perniagaan. 
 Anda boleh membantu pengguna dengan:
 - Membuat Invois (invoice) atau Sebut Harga (quote) baru
@@ -527,8 +756,471 @@ Context: ${JSON.stringify(context)}`;
     status: error.status,
     code: error.code
   });
-  throw new Error(`Gagal memproses permintaan AI: ${error.message}`);
+  
+  // Fallback to simple response if API fails
+  return this.handleFallbackResponse(message, context);
 }
+  }
+
+  // Fallback response when Groq API is not available
+  async handleFallbackResponse(message, context = {}) {
+    const lowerMessage = message.toLowerCase();
+    
+    // Try to use tool calls for data queries even without Groq API
+    if (lowerMessage.includes('pelanggan') || lowerMessage.includes('customer')) {
+      if (lowerMessage.includes('berapa') || lowerMessage.includes('jumlah') || lowerMessage.includes('banyak')) {
+        return {
+          choices: [{
+            message: {
+              content: 'Saya akan mendapatkan maklumat pelanggan untuk anda...',
+              tool_calls: [{
+                type: 'function',
+                function: {
+                  name: 'getCustomerAnalysis',
+                  arguments: JSON.stringify({ limit: 10 })
+                }
+              }]
+            }
+          }]
+        };
+      } else if (lowerMessage.includes('cari') || lowerMessage.includes('tunjukkan') || lowerMessage.includes('cari')) {
+        // Extract search term from message
+        const searchTerm = message.replace(/[^\w\s]/gi, '').trim();
+        return {
+          choices: [{
+            message: {
+              content: `Saya akan mencari pelanggan dengan kata kunci "${searchTerm}"...`,
+              tool_calls: [{
+                type: 'function',
+                function: {
+                  name: 'searchCustomers',
+                  arguments: JSON.stringify({ 
+                    searchTerm: searchTerm,
+                    limit: 20
+                  })
+                }
+              }]
+            }
+          }]
+        };
+      }
+    }
+    
+    if (lowerMessage.includes('invois') || lowerMessage.includes('invoice')) {
+      if (lowerMessage.includes('berapa') || lowerMessage.includes('jumlah') || lowerMessage.includes('banyak')) {
+        return {
+          choices: [{
+            message: {
+              content: 'Saya akan mendapatkan analisis invois untuk anda...',
+              tool_calls: [{
+                type: 'function',
+                function: {
+                  name: 'getDetailedInvoiceAnalysis',
+                  arguments: JSON.stringify({ analysisType: 'summary' })
+                }
+              }]
+            }
+          }]
+        };
+      } else if (lowerMessage.includes('tunjukkan') || lowerMessage.includes('lihat')) {
+        return {
+          choices: [{
+            message: {
+              content: 'Saya akan mendapatkan senarai invois untuk anda...',
+              tool_calls: [{
+                type: 'function',
+                function: {
+                  name: 'getDocuments',
+                  arguments: JSON.stringify({ documentType: 'invoice' })
+                }
+              }]
+            }
+          }]
+        };
+      }
+    }
+    
+    if (lowerMessage.includes('sebut harga') || lowerMessage.includes('quote')) {
+      if (lowerMessage.includes('berapa') || lowerMessage.includes('jumlah') || lowerMessage.includes('banyak')) {
+        return {
+          choices: [{
+            message: {
+              content: 'Saya akan mendapatkan analisis sebut harga untuk anda...',
+              tool_calls: [{
+                type: 'function',
+                function: {
+                  name: 'getQuoteAnalysis',
+                  arguments: JSON.stringify({ analysisType: 'summary' })
+                }
+              }]
+            }
+          }]
+        };
+      } else if (lowerMessage.includes('tunjukkan') || lowerMessage.includes('lihat')) {
+        return {
+          choices: [{
+            message: {
+              content: 'Saya akan mendapatkan senarai sebut harga untuk anda...',
+              tool_calls: [{
+                type: 'function',
+                function: {
+                  name: 'getDocuments',
+                  arguments: JSON.stringify({ documentType: 'quote' })
+                }
+              }]
+            }
+          }]
+        };
+      }
+    }
+    
+    if (lowerMessage.includes('revenue') || lowerMessage.includes('pendapatan') || lowerMessage.includes('jualan')) {
+      return {
+        choices: [{
+          message: {
+            content: 'Saya akan mendapatkan analisis revenue untuk anda...',
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'getRevenueAnalysis',
+                arguments: JSON.stringify({ documentType: 'all' })
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    if (lowerMessage.includes('laporan') || lowerMessage.includes('analisis') || lowerMessage.includes('statistik')) {
+      return {
+        choices: [{
+          message: {
+            content: 'Saya akan mendapatkan laporan bulanan untuk anda...',
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'getMonthlyReport',
+                arguments: JSON.stringify({})
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    // Handle revenue and payment queries
+    if (lowerMessage.includes('revenue') || lowerMessage.includes('pendapatan') || lowerMessage.includes('jualan') || lowerMessage.includes('bayar')) {
+      return {
+        choices: [{
+          message: {
+            content: 'Saya akan mendapatkan analisis revenue untuk anda...',
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'getRevenueAnalysis',
+                arguments: JSON.stringify({ documentType: 'all' })
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    // Handle outstanding amounts queries
+    if (lowerMessage.includes('tertunggak') || lowerMessage.includes('baki') || lowerMessage.includes('belum bayar')) {
+      return {
+        choices: [{
+          message: {
+            content: 'Saya akan mendapatkan analisis jumlah tertunggak untuk anda...',
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'getOutstandingAmounts',
+                arguments: JSON.stringify({ documentType: 'all' })
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    // Handle document queries
+    if (lowerMessage.includes('dokumen') || lowerMessage.includes('invois') || lowerMessage.includes('sebut harga')) {
+      if (lowerMessage.includes('tunjukkan') || lowerMessage.includes('lihat') || lowerMessage.includes('senarai')) {
+        const docType = lowerMessage.includes('sebut harga') ? 'quote' : 'invoice';
+        return {
+          choices: [{
+            message: {
+              content: `Saya akan mendapatkan senarai ${docType === 'quote' ? 'sebut harga' : 'invois'} untuk anda...`,
+              tool_calls: [{
+                type: 'function',
+                function: {
+                  name: 'getDocuments',
+                  arguments: JSON.stringify({ documentType: docType })
+                }
+              }]
+            }
+          }]
+        };
+      }
+    }
+    
+    // Handle customer creation
+    if (lowerMessage.includes('tambah pelanggan') || lowerMessage.includes('daftar pelanggan') || lowerMessage.includes('buat pelanggan')) {
+      // Extract customer information from message
+      const emailMatch = message.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+      const nameMatch = message.match(/(?:tambah|daftar|buat)\s+pelanggan\s+([^dengan|with|@]+?)(?:\s+dengan|\s+with|\s+@|$)/i);
+      
+      const customerName = nameMatch ? nameMatch[1].trim() : 'Pelanggan Baru';
+      const customerEmail = emailMatch ? emailMatch[1] : `${customerName.toLowerCase().replace(/\s+/g, '')}@example.com`;
+      
+      return {
+        choices: [{
+          message: {
+            content: `Saya akan menambah pelanggan "${customerName}" untuk anda...`,
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'createCustomer',
+                arguments: JSON.stringify({
+                  name: customerName,
+                  email: customerEmail,
+                  company: customerName.includes('Sdn') || customerName.includes('Bhd') ? customerName : '',
+                  phone: '',
+                  address: ''
+                })
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    // Handle trend analysis
+    if (lowerMessage.includes('trend') || lowerMessage.includes('analisis bulanan') || lowerMessage.includes('pertumbuhan')) {
+      return {
+        choices: [{
+          message: {
+            content: 'Saya akan menganalisis trend bulanan untuk anda...',
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'getMonthlyTrends',
+                arguments: JSON.stringify({
+                  months: 6,
+                  includeProjections: true
+                })
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    // Handle top customers queries
+    if (lowerMessage.includes('pelanggan terbaik') || lowerMessage.includes('top customer') || lowerMessage.includes('pelanggan utama')) {
+      return {
+        choices: [{
+          message: {
+            content: 'Saya akan mendapatkan senarai pelanggan terbaik untuk anda...',
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'getTopCustomers',
+                arguments: JSON.stringify({
+                  sortBy: 'revenue',
+                  limit: 10,
+                  timeframe: 'all'
+                })
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    // Handle revenue forecast
+    if (lowerMessage.includes('ramalan') || lowerMessage.includes('forecast') || lowerMessage.includes('projeksi')) {
+      return {
+        choices: [{
+          message: {
+            content: 'Saya akan membuat ramalan pendapatan untuk anda...',
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'getRevenueForecast',
+                arguments: JSON.stringify({
+                  months: 3,
+                  confidence: 'moderate'
+                })
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    // Handle overdue analysis
+    if (lowerMessage.includes('tertunggak') || lowerMessage.includes('overdue') || lowerMessage.includes('belum bayar')) {
+      return {
+        choices: [{
+          message: {
+            content: 'Saya akan menganalisis invois tertunggak untuk anda...',
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'getOverdueAnalysis',
+                arguments: JSON.stringify({
+                  includeSuggestions: true,
+                  groupBy: 'customer'
+                })
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    // Handle business insights
+    if (lowerMessage.includes('pandangan') || lowerMessage.includes('insight') || lowerMessage.includes('cadangan')) {
+      return {
+        choices: [{
+          message: {
+            content: 'Saya akan memberikan pandangan perniagaan untuk anda...',
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'getBusinessInsights',
+                arguments: JSON.stringify({
+                  focus: 'revenue',
+                  includeRecommendations: true
+                })
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    // Handle document statistics
+    if (lowerMessage.includes('statistik') || lowerMessage.includes('statistics') || lowerMessage.includes('jumlah dokumen')) {
+      return {
+        choices: [{
+          message: {
+            content: 'Saya akan mendapatkan statistik dokumen untuk anda...',
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'getDocumentStats',
+                arguments: JSON.stringify({
+                  documentType: 'all',
+                  timeframe: 'all'
+                })
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    // Handle date range search
+    if (lowerMessage.includes('cari dokumen') && (lowerMessage.includes('dari') || lowerMessage.includes('hingga'))) {
+      // Extract dates from message
+      const dateMatch = message.match(/(\d{4}-\d{2}-\d{2})/g);
+      if (dateMatch && dateMatch.length >= 2) {
+        return {
+          choices: [{
+            message: {
+              content: `Saya akan mencari dokumen dari ${dateMatch[0]} hingga ${dateMatch[1]}...`,
+              tool_calls: [{
+                type: 'function',
+                function: {
+                  name: 'searchDocumentsByDate',
+                  arguments: JSON.stringify({
+                    startDate: dateMatch[0],
+                    endDate: dateMatch[1],
+                    documentType: 'all',
+                    status: 'all'
+                  })
+                }
+              }]
+            }
+          }]
+        };
+      }
+    }
+    
+    if (lowerMessage.includes('buat') && (lowerMessage.includes('invois') || lowerMessage.includes('sebut harga'))) {
+      // Extract information from the message
+      const documentType = lowerMessage.includes('sebut harga') ? 'quote' : 'invoice';
+      const docTypeName = documentType === 'quote' ? 'Sebut Harga' : 'Invois';
+      
+      // Try to extract customer name and items from the message
+      let customerName = 'Pelanggan Baru';
+      let items = [];
+      
+      // Extract customer name (look for "untuk" or "for")
+      const customerMatch = message.match(/(?:untuk|for)\s+([^dengan|with]+?)(?:\s+dengan|\s+with|$)/i);
+      if (customerMatch) {
+        customerName = customerMatch[1].trim();
+      }
+      
+      // Extract items (look for patterns like "2 laptop RM3000")
+      const itemMatches = message.match(/(\d+)\s+([^RM]+?)\s+RM(\d+)/gi);
+      if (itemMatches) {
+        items = itemMatches.map(match => {
+          const parts = match.match(/(\d+)\s+([^RM]+?)\s+RM(\d+)/i);
+          if (parts) {
+            return {
+              name: parts[2].trim(),
+              quantity: parseInt(parts[1]),
+              price: parseInt(parts[3])
+            };
+          }
+          return null;
+        }).filter(item => item !== null);
+      }
+      
+      // If no items found, create a default item
+      if (items.length === 0) {
+        items = [{
+          name: 'Item 1',
+          quantity: 1,
+          price: 100
+        }];
+      }
+      
+      return {
+        choices: [{
+          message: {
+            content: `Saya akan membuat ${docTypeName} untuk ${customerName}...`,
+            tool_calls: [{
+              type: 'function',
+              function: {
+                name: 'createDocument',
+                arguments: JSON.stringify({
+                  documentType: documentType,
+                  customer: customerName,
+                  items: items,
+                  dueDate: '30 days',
+                  notes: `Dibuat melalui AI Chat - ${new Date().toLocaleDateString('ms-MY')}`
+                })
+              }
+            }]
+          }
+        }]
+      };
+    }
+    
+    // Default response
+    return {
+      choices: [{
+        message: {
+          content: 'Saya adalah AI assistant untuk sistem pengurusan invois. Sila gunakan menu di sebelah kiri untuk navigasi ke fungsi yang anda perlukan. Untuk bantuan lebih lanjut, sila rujuk panduan pengguna.',
+          tool_calls: null
+        }
+      }]
+    };
   }
 
   // Handle tool calls
@@ -563,6 +1255,11 @@ Context: ${JSON.stringify(context)}`;
           case 'getCustomers':
             result = await this.getCustomers(parsedArgs, context);
             results.push(`👥 Ditemui ${result.length} pelanggan.`);
+            break;
+            
+          case 'searchCustomers':
+            result = await this.searchCustomers(parsedArgs, context);
+            results.push(`🔍 Pencarian "${parsedArgs.searchTerm}": Ditemui ${result.length} pelanggan.`);
             break;
             
           case 'getAnalytics':
@@ -649,6 +1346,46 @@ Context: ${JSON.stringify(context)}`;
           case 'getQuoteAnalysis':
             result = await this.getQuoteAnalysis(parsedArgs, context);
             results.push(`📋 Analisis Sebut Harga: ${result.summary}`);
+            break;
+            
+          case 'generateTermsAndConditions':
+            result = await this.generateTermsAndConditions(parsedArgs, context);
+            results.push(`📝 Terma dan Syarat telah dijana untuk ${parsedArgs.businessType}`);
+            break;
+            
+          case 'getMonthlyTrends':
+            result = await this.getMonthlyTrends(parsedArgs, context);
+            results.push(`📈 Analisis trend bulanan: ${result.summary}`);
+            break;
+            
+          case 'searchDocumentsByDate':
+            result = await this.searchDocumentsByDate(parsedArgs, context);
+            results.push(`📅 Dokumen dalam tempoh ${parsedArgs.startDate} hingga ${parsedArgs.endDate}: ${result.length} ditemui.`);
+            break;
+            
+          case 'getTopCustomers':
+            result = await this.getTopCustomers(parsedArgs, context);
+            results.push(`🏆 Top ${parsedArgs.limit || 10} pelanggan berdasarkan ${parsedArgs.sortBy}: ${result.summary}`);
+            break;
+            
+          case 'getRevenueForecast':
+            result = await this.getRevenueForecast(parsedArgs, context);
+            results.push(`🔮 Ramalan pendapatan ${parsedArgs.months || 3} bulan: ${result.summary}`);
+            break;
+            
+          case 'getOverdueAnalysis':
+            result = await this.getOverdueAnalysis(parsedArgs, context);
+            results.push(`⚠️ Analisis invois tertunggak: ${result.summary}`);
+            break;
+            
+          case 'getBusinessInsights':
+            result = await this.getBusinessInsights(parsedArgs, context);
+            results.push(`💡 Pandangan perniagaan (${parsedArgs.focus}): ${result.summary}`);
+            break;
+            
+          case 'getDocumentStats':
+            result = await this.getDocumentStats(parsedArgs, context);
+            results.push(`📊 Statistik dokumen: ${result.summary}`);
             break;
             
           default:
@@ -814,13 +1551,38 @@ Context: ${JSON.stringify(context)}`;
       // Build query
       const query = { userId: context.userId, status: 'active' };
       
-      // Add search filter
+      // Add search filter with improved matching
       if (filters && filters.search) {
+        const searchTerm = filters.search.trim();
+        
+        // Split search term into words for partial matching
+        const searchWords = searchTerm.split(/\s+/).filter(word => word.length > 0);
+        
+        if (searchWords.length > 0) {
+          // Create regex patterns for each word
+          const namePatterns = searchWords.map(word => ({
+            name: { $regex: word, $options: 'i' }
+          }));
+          
+          const companyPatterns = searchWords.map(word => ({
+            company: { $regex: word, $options: 'i' }
+          }));
+          
+          const emailPatterns = searchWords.map(word => ({
+            email: { $regex: word, $options: 'i' }
+          }));
+
+          // Search for any word matching in name, company, or email
         query.$or = [
-          { name: { $regex: filters.search, $options: 'i' } },
-          { company: { $regex: filters.search, $options: 'i' } },
-          { email: { $regex: filters.search, $options: 'i' } }
-        ];
+            ...namePatterns,
+            ...companyPatterns,
+            ...emailPatterns,
+            // Also search for exact phrase match
+            { name: { $regex: searchTerm, $options: 'i' } },
+            { company: { $regex: searchTerm, $options: 'i' } },
+            { email: { $regex: searchTerm, $options: 'i' } }
+          ];
+        }
       }
 
       // Get customers from database
@@ -829,10 +1591,27 @@ Context: ${JSON.stringify(context)}`;
         .limit(50) // Limit to 50 customers
         .lean();
 
-      // Format customers for response
-      const formattedCustomers = customers.map(customer => ({
+      // Format customers for response with match highlighting
+      const formattedCustomers = customers.map(customer => {
+        let matchInfo = '';
+        if (filters && filters.search) {
+          const searchTerm = filters.search.toLowerCase();
+          const name = customer.name.toLowerCase();
+          const company = (customer.company || '').toLowerCase();
+          const email = customer.email.toLowerCase();
+          
+          if (name.includes(searchTerm)) {
+            matchInfo = ' (Nama)';
+          } else if (company.includes(searchTerm)) {
+            matchInfo = ' (Syarikat)';
+          } else if (email.includes(searchTerm)) {
+            matchInfo = ' (Email)';
+          }
+        }
+
+        return {
         id: customer._id,
-        name: customer.name,
+          name: customer.name + matchInfo,
         company: customer.company,
         email: customer.email,
         phone: customer.phone,
@@ -841,13 +1620,98 @@ Context: ${JSON.stringify(context)}`;
         totalAmount: customer.totalAmount || 0,
         lastInvoiceDate: customer.lastInvoiceDate,
         createdAt: customer.createdAt
-      }));
+        };
+      });
 
       return formattedCustomers;
 
     } catch (error) {
       console.error('Error getting customers:', error);
       throw new Error(`Gagal mendapatkan pelanggan: ${error.message}`);
+    }
+  }
+
+  async searchCustomers(filters, context) {
+    try {
+      const userId = context.userId;
+      const searchTerm = filters.searchTerm.trim();
+      const limit = filters.limit || 20;
+      
+      if (!searchTerm) {
+        return [];
+      }
+
+      // Build advanced search query
+      const query = { 
+        userId: context.userId, 
+        status: 'active',
+        $or: [
+          // Search in name (partial match)
+          { name: { $regex: searchTerm, $options: 'i' } },
+          // Search in company (partial match)
+          { company: { $regex: searchTerm, $options: 'i' } },
+          // Search in email (partial match)
+          { email: { $regex: searchTerm, $options: 'i' } },
+          // Search in phone (partial match)
+          { phone: { $regex: searchTerm, $options: 'i' } }
+        ]
+      };
+
+      // Get customers from database
+      const customers = await Customer.find(query)
+        .sort({ name: 1 })
+        .limit(limit)
+        .lean();
+
+      // Format customers with detailed match information
+      const formattedCustomers = customers.map(customer => {
+        const searchLower = searchTerm.toLowerCase();
+        const name = customer.name.toLowerCase();
+        const company = (customer.company || '').toLowerCase();
+        const email = customer.email.toLowerCase();
+        const phone = (customer.phone || '').toLowerCase();
+        
+        let matchType = '';
+        let matchDetails = [];
+        
+        if (name.includes(searchLower)) {
+          matchType = 'Nama';
+          matchDetails.push(`Nama: ${customer.name}`);
+        }
+        if (company.includes(searchLower)) {
+          matchType = matchType ? 'Nama/Syarikat' : 'Syarikat';
+          matchDetails.push(`Syarikat: ${customer.company}`);
+        }
+        if (email.includes(searchLower)) {
+          matchType = matchType ? 'Nama/Syarikat/Email' : 'Email';
+          matchDetails.push(`Email: ${customer.email}`);
+        }
+        if (phone.includes(searchLower)) {
+          matchType = matchType ? 'Nama/Syarikat/Email/Telefon' : 'Telefon';
+          matchDetails.push(`Telefon: ${customer.phone}`);
+        }
+
+        return {
+          id: customer._id,
+          name: customer.name,
+          company: customer.company || 'Tiada syarikat',
+          email: customer.email,
+          phone: customer.phone || 'Tiada telefon',
+          fullAddress: customer.fullAddress || 'Tiada alamat',
+          matchType: matchType,
+          matchDetails: matchDetails.join(', '),
+          totalInvoices: customer.totalInvoices || 0,
+          totalAmount: customer.totalAmount || 0,
+          lastInvoiceDate: customer.lastInvoiceDate,
+          createdAt: customer.createdAt
+        };
+      });
+
+      return formattedCustomers;
+
+    } catch (error) {
+      console.error('Error searching customers:', error);
+      throw new Error(`Gagal mencari pelanggan: ${error.message}`);
     }
   }
 
@@ -1919,6 +2783,226 @@ Context: ${JSON.stringify(context)}`;
     };
   }
 
+  // Generate terms and conditions
+  async generateTermsAndConditions(args, context = {}) {
+    try {
+      const { businessType, notes, language = 'malay', shorten = false } = args;
+      
+      // Create a prompt for generating terms and conditions
+      let prompt;
+      
+      if (shorten || (notes && notes.toLowerCase().includes('ringkaskan'))) {
+        prompt = `Generate SHORT and CONCISE terms and conditions for a ${businessType} business in ${language === 'malay' ? 'Bahasa Malaysia' : 'English'}. ${notes ? `Additional requirements: ${notes}` : ''}
+
+Make it very brief (1-3 lines maximum) with only the most essential terms:
+- Payment terms
+- Basic liability
+- Governing law
+
+Keep it simple and professional.`;
+      } else {
+        prompt = `Generate comprehensive terms and conditions for a ${businessType} business in ${language === 'malay' ? 'Bahasa Malaysia' : 'English'}. ${notes ? `Additional requirements: ${notes}` : ''}
+
+Please include standard clauses for:
+- Payment terms and conditions
+- Delivery/service terms
+- Liability and warranty
+- Cancellation policy
+- Force majeure
+- Governing law
+- Contact information
+
+Format the response as a clean, professional terms and conditions document.`;
+      }
+
+      if (!this.groq) {
+        // Fallback response when Groq is not available
+        let fallbackTerms;
+        
+        if (shorten || (notes && notes.toLowerCase().includes('ringkaskan'))) {
+          // Short version
+          fallbackTerms = language === 'malay' ? 
+            `TERMA DAN SYARAT:
+1. Pembayaran dalam tempoh 30 hari dari tarikh invois.
+2. Bayaran lewat dikenakan faedah 1.5% sebulan.
+3. Tertakluk kepada undang-undang Malaysia.` :
+            `TERMS AND CONDITIONS:
+1. Payment within 30 days from invoice date.
+2. Late payments incur 1.5% monthly interest.
+3. Subject to Malaysian law.`;
+        } else {
+          // Full version
+          fallbackTerms = language === 'malay' ? 
+            `TERMA DAN SYARAT
+
+1. PEMBAYARAN
+   - Pembayaran hendaklah dibuat dalam tempoh 30 hari dari tarikh invois
+   - Bayaran lewat akan dikenakan caj faedah sebanyak 1.5% sebulan
+   - Semua harga adalah dalam Ringgit Malaysia (RM)
+
+2. PENGHANTARAN/PERKHIDMATAN
+   - Penghantaran/perkhidmatan akan dibuat mengikut jadual yang dipersetujui
+   - Pelanggan bertanggungjawab untuk menyediakan akses yang diperlukan
+
+3. JAMINAN
+   - Produk/perkhidmatan dijamin mengikut spesifikasi yang dipersetujui
+   - Jaminan terhad kepada pembaikan atau penggantian sahaja
+
+4. PEMBATALAN
+   - Pembatalan hendaklah dibuat secara bertulis dengan notis 7 hari
+   - Caj pembatalan mungkin dikenakan untuk kos yang telah ditanggung
+
+5. UNDANG-UNDANG
+   - Terma ini tertakluk kepada undang-undang Malaysia
+   - Sebarang pertikaian akan diselesaikan melalui mahkamah Malaysia
+
+Untuk sebarang pertanyaan, sila hubungi kami.` :
+            `TERMS AND CONDITIONS
+
+1. PAYMENT
+   - Payment shall be made within 30 days from invoice date
+   - Late payments will incur interest charges of 1.5% per month
+   - All prices are in Malaysian Ringgit (RM)
+
+2. DELIVERY/SERVICE
+   - Delivery/service will be made according to agreed schedule
+   - Customer is responsible for providing necessary access
+
+3. WARRANTY
+   - Products/services are warranted according to agreed specifications
+   - Warranty limited to repair or replacement only
+
+4. CANCELLATION
+   - Cancellation must be made in writing with 7 days notice
+   - Cancellation charges may apply for costs already incurred
+
+5. GOVERNING LAW
+   - These terms are subject to Malaysian law
+   - Any disputes will be resolved through Malaysian courts
+
+For any inquiries, please contact us.`;
+        }
+
+        return {
+          type: 'terms',
+          content: fallbackTerms,
+          businessType: businessType,
+          language: language
+        };
+      }
+
+      // Use Groq to generate terms
+      try {
+        const completion = await this.groq.chat.completions.create({
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a legal assistant specializing in business terms and conditions. Generate professional, comprehensive terms and conditions documents.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          model: this.model,
+          temperature: 0.3,
+          max_tokens: 2000
+        });
+
+        const generatedTerms = completion.choices[0]?.message?.content || '';
+
+        return {
+          type: 'terms',
+          content: generatedTerms,
+          businessType: businessType,
+          language: language,
+          source: 'groq'
+        };
+      } catch (groqError) {
+        console.error('Groq API Error for terms generation:', groqError);
+        
+        // Fallback to predefined terms when Groq fails
+        let fallbackTerms;
+        
+        if (shorten || (notes && notes.toLowerCase().includes('ringkaskan'))) {
+          // Short version
+          fallbackTerms = language === 'malay' ? 
+            `TERMA DAN SYARAT:
+1. Pembayaran dalam tempoh 30 hari dari tarikh invois.
+2. Bayaran lewat dikenakan faedah 1.5% sebulan.
+3. Tertakluk kepada undang-undang Malaysia.` :
+            `TERMS AND CONDITIONS:
+1. Payment within 30 days from invoice date.
+2. Late payments incur 1.5% monthly interest.
+3. Subject to Malaysian law.`;
+        } else {
+          // Full version
+          fallbackTerms = language === 'malay' ? 
+            `TERMA DAN SYARAT
+
+1. PEMBAYARAN
+   - Pembayaran hendaklah dibuat dalam tempoh 30 hari dari tarikh invois
+   - Bayaran lewat akan dikenakan caj faedah sebanyak 1.5% sebulan
+   - Semua harga adalah dalam Ringgit Malaysia (RM)
+
+2. PENGHANTARAN/PERKHIDMATAN
+   - Penghantaran/perkhidmatan akan dibuat mengikut jadual yang dipersetujui
+   - Pelanggan bertanggungjawab untuk menyediakan akses yang diperlukan
+
+3. JAMINAN
+   - Produk/perkhidmatan dijamin mengikut spesifikasi yang dipersetujui
+   - Jaminan terhad kepada pembaikan atau penggantian sahaja
+
+4. PEMBATALAN
+   - Pembatalan hendaklah dibuat secara bertulis dengan notis 7 hari
+   - Caj pembatalan mungkin dikenakan untuk kos yang telah ditanggung
+
+5. UNDANG-UNDANG
+   - Terma ini tertakluk kepada undang-undang Malaysia
+   - Sebarang pertikaian akan diselesaikan melalui mahkamah Malaysia
+
+Untuk sebarang pertanyaan, sila hubungi kami.` :
+            `TERMS AND CONDITIONS
+
+1. PAYMENT
+   - Payment shall be made within 30 days from invoice date
+   - Late payments will incur interest charges of 1.5% per month
+   - All prices are in Malaysian Ringgit (RM)
+
+2. DELIVERY/SERVICE
+   - Delivery/service will be made according to agreed schedule
+   - Customer is responsible for providing necessary access
+
+3. WARRANTY
+   - Products/services are warranted according to agreed specifications
+   - Warranty limited to repair or replacement only
+
+4. CANCELLATION
+   - Cancellation must be made in writing with 7 days notice
+   - Cancellation charges may apply for costs already incurred
+
+5. GOVERNING LAW
+   - These terms are subject to Malaysian law
+   - Any disputes will be resolved through Malaysian courts
+
+For any inquiries, please contact us.`;
+        }
+
+        return {
+          type: 'terms',
+          content: fallbackTerms,
+          businessType: businessType,
+          language: language,
+          source: 'fallback'
+        };
+      }
+
+    } catch (error) {
+      console.error('Error generating terms and conditions:', error);
+      throw new Error(`Gagal menjana terma dan syarat: ${error.message}`);
+    }
+  }
+
   // Main process method
   async process(message, context = {}) {
     try {
@@ -1949,6 +3033,474 @@ Context: ${JSON.stringify(context)}`;
       return {
         type: 'error',
         content: 'Maaf, berlaku ralat semasa memproses permintaan anda. Sila cuba lagi.'
+      };
+    }
+  }
+
+  // Get monthly trends analysis
+  async getMonthlyTrends(args, context = {}) {
+    try {
+      const { months = 6, includeProjections = false } = args;
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - months);
+
+      // Get invoices for the period
+      const invoices = await Invoice.find({
+        createdAt: { $gte: startDate, $lte: endDate },
+        documentType: 'invoice'
+      }).sort({ createdAt: 1 });
+
+      // Calculate monthly data
+      const monthlyData = {};
+      invoices.forEach(invoice => {
+        const month = invoice.createdAt.toISOString().substring(0, 7); // YYYY-MM
+        if (!monthlyData[month]) {
+          monthlyData[month] = { revenue: 0, count: 0, customers: new Set() };
+        }
+        monthlyData[month].revenue += invoice.total || 0;
+        monthlyData[month].count += 1;
+        monthlyData[month].customers.add(invoice.clientName);
+      });
+
+      // Convert to array and calculate growth
+      const trends = Object.keys(monthlyData).map(month => ({
+        month,
+        revenue: monthlyData[month].revenue,
+        count: monthlyData[month].count,
+        customers: monthlyData[month].customers.size
+      }));
+
+      // Calculate growth rates
+      const revenueGrowth = trends.length > 1 ? 
+        ((trends[trends.length - 1].revenue - trends[0].revenue) / trends[0].revenue * 100) : 0;
+      
+      const countGrowth = trends.length > 1 ? 
+        ((trends[trends.length - 1].count - trends[0].count) / trends[0].count * 100) : 0;
+
+      let summary = `Trend ${months} bulan terakhir:\n`;
+      summary += `• Pendapatan: RM${trends.reduce((sum, t) => sum + t.revenue, 0).toLocaleString()}\n`;
+      summary += `• Jumlah invois: ${trends.reduce((sum, t) => sum + t.count, 0)}\n`;
+      summary += `• Pertumbuhan pendapatan: ${revenueGrowth.toFixed(1)}%\n`;
+      summary += `• Pertumbuhan invois: ${countGrowth.toFixed(1)}%`;
+
+      if (includeProjections) {
+        const avgMonthlyRevenue = trends.reduce((sum, t) => sum + t.revenue, 0) / trends.length;
+        const projectedRevenue = avgMonthlyRevenue * 3; // Next 3 months
+        summary += `\n• Ramalan 3 bulan: RM${projectedRevenue.toLocaleString()}`;
+      }
+
+      return {
+        trends,
+        summary,
+        revenueGrowth,
+        countGrowth,
+        totalRevenue: trends.reduce((sum, t) => sum + t.revenue, 0),
+        totalInvoices: trends.reduce((sum, t) => sum + t.count, 0)
+      };
+    } catch (error) {
+      console.error('Error getting monthly trends:', error);
+      return {
+        trends: [],
+        summary: 'Ralat semasa menganalisis trend bulanan',
+        error: error.message
+      };
+    }
+  }
+
+  // Search documents by date range
+  async searchDocumentsByDate(args, context = {}) {
+    try {
+      const { startDate, endDate, documentType = 'all', status = 'all' } = args;
+      
+      const query = {
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        }
+      };
+
+      if (documentType !== 'all') {
+        query.documentType = documentType;
+      }
+
+      if (status !== 'all') {
+        query.status = status;
+      }
+
+      const documents = await Invoice.find(query).sort({ createdAt: -1 });
+
+      const summary = `Ditemui ${documents.length} dokumen dalam tempoh ${startDate} hingga ${endDate}`;
+      
+      return {
+        documents,
+        summary,
+        count: documents.length,
+        totalAmount: documents.reduce((sum, doc) => sum + (doc.total || 0), 0)
+      };
+    } catch (error) {
+      console.error('Error searching documents by date:', error);
+      return {
+        documents: [],
+        summary: 'Ralat semasa mencari dokumen',
+        error: error.message
+      };
+    }
+  }
+
+  // Get top customers
+  async getTopCustomers(args, context = {}) {
+    try {
+      const { sortBy = 'revenue', limit = 10, timeframe = 'all' } = args;
+      
+      let dateFilter = {};
+      if (timeframe === 'last_30_days') {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        dateFilter = { createdAt: { $gte: thirtyDaysAgo } };
+      } else if (timeframe === 'this_year') {
+        const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+        dateFilter = { createdAt: { $gte: startOfYear } };
+      }
+
+      const invoices = await Invoice.find({
+        ...dateFilter,
+        documentType: 'invoice'
+      });
+
+      // Group by customer
+      const customerData = {};
+      invoices.forEach(invoice => {
+        const customer = invoice.clientName;
+        if (!customerData[customer]) {
+          customerData[customer] = {
+            name: customer,
+            revenue: 0,
+            count: 0,
+            lastInvoice: null
+          };
+        }
+        customerData[customer].revenue += invoice.total || 0;
+        customerData[customer].count += 1;
+        if (!customerData[customer].lastInvoice || invoice.createdAt > customerData[customer].lastInvoice) {
+          customerData[customer].lastInvoice = invoice.createdAt;
+        }
+      });
+
+      // Sort customers
+      let sortedCustomers = Object.values(customerData);
+      if (sortBy === 'revenue') {
+        sortedCustomers.sort((a, b) => b.revenue - a.revenue);
+      } else if (sortBy === 'count') {
+        sortedCustomers.sort((a, b) => b.count - a.count);
+      } else if (sortBy === 'recent') {
+        sortedCustomers.sort((a, b) => b.lastInvoice - a.lastInvoice);
+      }
+
+      const topCustomers = sortedCustomers.slice(0, limit);
+      
+      let summary = `Top ${limit} pelanggan berdasarkan ${sortBy}:\n`;
+      topCustomers.forEach((customer, index) => {
+        summary += `${index + 1}. ${customer.name} - RM${customer.revenue.toLocaleString()} (${customer.count} invois)\n`;
+      });
+
+      return {
+        customers: topCustomers,
+        summary,
+        totalCustomers: Object.keys(customerData).length
+      };
+    } catch (error) {
+      console.error('Error getting top customers:', error);
+      return {
+        customers: [],
+        summary: 'Ralat semasa mendapatkan pelanggan terbaik',
+        error: error.message
+      };
+    }
+  }
+
+  // Get revenue forecast
+  async getRevenueForecast(args, context = {}) {
+    try {
+      const { months = 3, confidence = 'moderate' } = args;
+      
+      // Get last 6 months of data
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 6);
+
+      const invoices = await Invoice.find({
+        createdAt: { $gte: startDate, $lte: endDate },
+        documentType: 'invoice'
+      }).sort({ createdAt: 1 });
+
+      // Calculate monthly revenue
+      const monthlyRevenue = {};
+      invoices.forEach(invoice => {
+        const month = invoice.createdAt.toISOString().substring(0, 7);
+        monthlyRevenue[month] = (monthlyRevenue[month] || 0) + (invoice.total || 0);
+      });
+
+      const revenueValues = Object.values(monthlyRevenue);
+      const avgRevenue = revenueValues.reduce((sum, val) => sum + val, 0) / revenueValues.length;
+      
+      // Calculate trend
+      let trend = 0;
+      if (revenueValues.length > 1) {
+        const firstHalf = revenueValues.slice(0, Math.floor(revenueValues.length / 2));
+        const secondHalf = revenueValues.slice(Math.floor(revenueValues.length / 2));
+        const firstAvg = firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
+        const secondAvg = secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
+        trend = (secondAvg - firstAvg) / firstAvg;
+      }
+
+      // Apply confidence multiplier
+      const confidenceMultiplier = {
+        conservative: 0.8,
+        moderate: 1.0,
+        optimistic: 1.2
+      }[confidence];
+
+      const forecast = [];
+      for (let i = 1; i <= months; i++) {
+        const projectedRevenue = avgRevenue * (1 + trend * i) * confidenceMultiplier;
+        const month = new Date();
+        month.setMonth(month.getMonth() + i);
+        forecast.push({
+          month: month.toISOString().substring(0, 7),
+          projectedRevenue: Math.round(projectedRevenue)
+        });
+      }
+
+      const totalForecast = forecast.reduce((sum, f) => sum + f.projectedRevenue, 0);
+      
+      let summary = `Ramalan pendapatan ${months} bulan (${confidence}):\n`;
+      forecast.forEach(f => {
+        summary += `• ${f.month}: RM${f.projectedRevenue.toLocaleString()}\n`;
+      });
+      summary += `• Jumlah: RM${totalForecast.toLocaleString()}`;
+
+      return {
+        forecast,
+        summary,
+        totalForecast,
+        avgMonthlyRevenue: avgRevenue,
+        trend
+      };
+    } catch (error) {
+      console.error('Error getting revenue forecast:', error);
+      return {
+        forecast: [],
+        summary: 'Ralat semasa membuat ramalan pendapatan',
+        error: error.message
+      };
+    }
+  }
+
+  // Get overdue analysis
+  async getOverdueAnalysis(args, context = {}) {
+    try {
+      const { includeSuggestions = true, groupBy = 'customer' } = args;
+      
+      const today = new Date();
+      const overdueInvoices = await Invoice.find({
+        documentType: 'invoice',
+        status: 'overdue',
+        dueDate: { $lt: today }
+      });
+
+      let analysis = {};
+      let totalOverdue = 0;
+
+      overdueInvoices.forEach(invoice => {
+        const daysOverdue = Math.floor((today - new Date(invoice.dueDate)) / (1000 * 60 * 60 * 24));
+        const overdueAmount = invoice.total - (invoice.amountPaid || 0);
+        totalOverdue += overdueAmount;
+
+        if (groupBy === 'customer') {
+          const customer = invoice.clientName;
+          if (!analysis[customer]) {
+            analysis[customer] = { count: 0, amount: 0, maxDays: 0 };
+          }
+          analysis[customer].count += 1;
+          analysis[customer].amount += overdueAmount;
+          analysis[customer].maxDays = Math.max(analysis[customer].maxDays, daysOverdue);
+        } else if (groupBy === 'days_overdue') {
+          const range = daysOverdue <= 30 ? '1-30 hari' : 
+                       daysOverdue <= 60 ? '31-60 hari' : 
+                       daysOverdue <= 90 ? '61-90 hari' : '90+ hari';
+          if (!analysis[range]) {
+            analysis[range] = { count: 0, amount: 0 };
+          }
+          analysis[range].count += 1;
+          analysis[range].amount += overdueAmount;
+        }
+      });
+
+      let summary = `Analisis invois tertunggak:\n`;
+      summary += `• Jumlah invois: ${overdueInvoices.length}\n`;
+      summary += `• Jumlah tertunggak: RM${totalOverdue.toLocaleString()}\n\n`;
+
+      Object.entries(analysis).forEach(([key, data]) => {
+        summary += `• ${key}: ${data.count} invois, RM${data.amount.toLocaleString()}\n`;
+      });
+
+      if (includeSuggestions) {
+        summary += `\n💡 Cadangan:\n`;
+        summary += `• Hubungi pelanggan dengan invois tertunggak > 30 hari\n`;
+        summary += `• Pertimbangkan caj faedah untuk invois lama\n`;
+        summary += `• Tawarkan pelan pembayaran untuk jumlah besar`;
+      }
+
+      return {
+        analysis,
+        summary,
+        totalOverdue,
+        overdueCount: overdueInvoices.length
+      };
+    } catch (error) {
+      console.error('Error getting overdue analysis:', error);
+      return {
+        analysis: {},
+        summary: 'Ralat semasa menganalisis invois tertunggak',
+        error: error.message
+      };
+    }
+  }
+
+  // Get business insights
+  async getBusinessInsights(args, context = {}) {
+    try {
+      const { focus = 'revenue', includeRecommendations = true } = args;
+      
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 6);
+
+      const invoices = await Invoice.find({
+        createdAt: { $gte: startDate, $lte: endDate },
+        documentType: 'invoice'
+      });
+
+      const quotes = await Invoice.find({
+        createdAt: { $gte: startDate, $lte: endDate },
+        documentType: 'quote'
+      });
+
+      let insights = '';
+      let recommendations = '';
+
+      if (focus === 'revenue') {
+        const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+        const avgInvoiceValue = totalRevenue / invoices.length;
+        const paidInvoices = invoices.filter(inv => inv.status === 'paid');
+        const paymentRate = (paidInvoices.length / invoices.length) * 100;
+
+        insights = `Pandangan Pendapatan (6 bulan):\n`;
+        insights += `• Jumlah pendapatan: RM${totalRevenue.toLocaleString()}\n`;
+        insights += `• Purata nilai invois: RM${avgInvoiceValue.toFixed(2)}\n`;
+        insights += `• Kadar pembayaran: ${paymentRate.toFixed(1)}%\n`;
+        insights += `• Jumlah invois: ${invoices.length}`;
+
+        if (includeRecommendations) {
+          recommendations = `\n💡 Cadangan Pendapatan:\n`;
+          if (paymentRate < 80) {
+            recommendations += `• Tingkatkan kadar pembayaran dengan mengikuti invois\n`;
+          }
+          if (avgInvoiceValue < 1000) {
+            recommendations += `• Pertimbangkan meningkatkan nilai purata invois\n`;
+          }
+          recommendations += `• Tawarkan diskaun untuk pembayaran awal\n`;
+          recommendations += `• Pertimbangkan sistem deposit untuk projek besar`;
+        }
+      } else if (focus === 'customers') {
+        const uniqueCustomers = new Set(invoices.map(inv => inv.clientName));
+        const customerRevenue = {};
+        invoices.forEach(inv => {
+          customerRevenue[inv.clientName] = (customerRevenue[inv.clientName] || 0) + (inv.total || 0);
+        });
+
+        insights = `Pandangan Pelanggan (6 bulan):\n`;
+        insights += `• Jumlah pelanggan unik: ${uniqueCustomers.size}\n`;
+        insights += `• Jumlah invois: ${invoices.length}\n`;
+        insights += `• Purata invois per pelanggan: ${(invoices.length / uniqueCustomers.size).toFixed(1)}\n`;
+
+        if (includeRecommendations) {
+          recommendations = `\n💡 Cadangan Pelanggan:\n`;
+          recommendations += `• Fokus pada pelanggan dengan nilai tinggi\n`;
+          recommendations += `• Tawarkan pakej untuk pelanggan tetap\n`;
+          recommendations += `• Minta rujukan dari pelanggan yang puas\n`;
+          recommendations += `• Analisis pelanggan yang tidak aktif`;
+        }
+      }
+
+      return {
+        insights,
+        recommendations,
+        summary: insights + recommendations
+      };
+    } catch (error) {
+      console.error('Error getting business insights:', error);
+      return {
+        insights: '',
+        recommendations: '',
+        summary: 'Ralat semasa mendapatkan pandangan perniagaan',
+        error: error.message
+      };
+    }
+  }
+
+  // Get document statistics
+  async getDocumentStats(args, context = {}) {
+    try {
+      const { documentType = 'all', timeframe = 'all' } = args;
+      
+      let dateFilter = {};
+      if (timeframe === 'last_30_days') {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        dateFilter = { createdAt: { $gte: thirtyDaysAgo } };
+      } else if (timeframe === 'this_year') {
+        const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+        dateFilter = { createdAt: { $gte: startOfYear } };
+      }
+
+      const query = { ...dateFilter };
+      if (documentType !== 'all') {
+        query.documentType = documentType;
+      }
+
+      const documents = await Invoice.find(query);
+      
+      const stats = {
+        total: documents.length,
+        invoices: documents.filter(d => d.documentType === 'invoice').length,
+        quotes: documents.filter(d => d.documentType === 'quote').length,
+        totalAmount: documents.reduce((sum, doc) => sum + (doc.total || 0), 0),
+        paid: documents.filter(d => d.status === 'paid').length,
+        overdue: documents.filter(d => d.status === 'overdue').length,
+        draft: documents.filter(d => d.status === 'draft').length
+      };
+
+      let summary = `Statistik Dokumen (${timeframe}):\n`;
+      summary += `• Jumlah dokumen: ${stats.total}\n`;
+      summary += `• Invois: ${stats.invoices}\n`;
+      summary += `• Sebut Harga: ${stats.quotes}\n`;
+      summary += `• Jumlah nilai: RM${stats.totalAmount.toLocaleString()}\n`;
+      summary += `• Dibayar: ${stats.paid}\n`;
+      summary += `• Tertunggak: ${stats.overdue}\n`;
+      summary += `• Draf: ${stats.draft}`;
+
+      return {
+        stats,
+        summary
+      };
+    } catch (error) {
+      console.error('Error getting document stats:', error);
+      return {
+        stats: {},
+        summary: 'Ralat semasa mendapatkan statistik dokumen',
+        error: error.message
       };
     }
   }

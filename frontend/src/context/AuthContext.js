@@ -50,9 +50,13 @@ export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   const loadUser = async () => {
-    if (localStorage.token) {
-      setAuthToken(localStorage.token);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      // No user token; mark as not authenticated without calling API
+      dispatch({ type: 'AUTH_ERROR' });
+      return;
     }
+    setAuthToken(token);
 
     try {
       const res = await axios.get(`${API_BASE_URL}/api/users/profile`);
@@ -76,6 +80,27 @@ export const AuthProvider = ({ children }) => {
       delete axios.defaults.headers.common['Authorization'];
     }
   };
+
+  // Add response interceptor to handle 403 errors (account deactivated)
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 403 && error.response?.data?.message?.includes('dinyahaktifkan')) {
+          // Auto logout if account is deactivated
+          dispatch({ type: 'LOGOUT' });
+          setAuthToken(null);
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, []);
 
   const register = async (formData) => {
     try {
@@ -106,6 +131,13 @@ export const AuthProvider = ({ children }) => {
       return { success: true, message: res.data.message };
     } catch (err) {
       dispatch({ type: 'LOGIN_FAIL' });
+      // Handle account deactivated error specifically
+      if (err.response?.status === 403) {
+        return {
+          success: false,
+          message: 'Akaun anda telah dinyahaktifkan. Sila hubungi pentadbir sistem.',
+        };
+      }
       return {
         success: false,
         message: err.response?.data?.message || 'Log masuk gagal',

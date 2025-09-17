@@ -63,6 +63,13 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Username atau password salah' });
     }
 
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(403).json({ 
+        message: 'Akaun anda telah dinyahaktifkan. Sila hubungi pentadbir sistem.' 
+      });
+    }
+
     const token = jwt.sign(
       { id: user._id, username: user.username },
       process.env.JWT_SECRET,

@@ -16,6 +16,13 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ message: 'Token is not valid' });
     }
 
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(403).json({ 
+        message: 'Akaun anda telah dinyahaktifkan. Sila hubungi pentadbir sistem.' 
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {

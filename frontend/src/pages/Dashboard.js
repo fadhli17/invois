@@ -20,7 +20,20 @@ import {
   FiEdit,
   FiDownload,
   FiFilter,
-  FiRefreshCw
+  FiRefreshCw,
+  FiSun,
+  FiCloud,
+  FiCloudRain,
+  FiWind,
+  FiThermometer,
+  FiActivity,
+  FiTarget,
+  FiTrendingUp as FiTrendingUpIcon,
+  FiAward,
+  FiZap,
+  FiInfo,
+  FiBell,
+  FiStar
 } from 'react-icons/fi';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config/api';
@@ -118,6 +131,9 @@ const Dashboard = () => {
   const [allInvoices, setAllInvoices] = useState([]);
   const [searchTimeout, setSearchTimeout] = useState(null);
   const [searching, setSearching] = useState(false);
+  const [weather, setWeather] = useState(null);
+  const [quickInsights, setQuickInsights] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
 
   useEffect(() => {
     // Clear existing timeout
@@ -142,6 +158,27 @@ const Dashboard = () => {
       }
     };
   }, [search, status]);
+
+  // Fetch weather data
+  useEffect(() => {
+    fetchWeatherData();
+  }, []);
+
+  const fetchWeatherData = async () => {
+    try {
+      // Simulate weather data for Malaysia (Kuala Lumpur)
+      const weatherData = {
+        location: 'Kuala Lumpur',
+        temperature: Math.floor(Math.random() * 10) + 25, // 25-35°C
+        condition: ['sunny', 'cloudy', 'rainy'][Math.floor(Math.random() * 3)],
+        humidity: Math.floor(Math.random() * 20) + 60, // 60-80%
+        windSpeed: Math.floor(Math.random() * 15) + 5 // 5-20 km/h
+      };
+      setWeather(weatherData);
+    } catch (error) {
+      console.error('Error fetching weather:', error);
+    }
+  };
 
   const fetchDashboardData = async (isRefresh = false) => {
     try {
@@ -212,6 +249,13 @@ const Dashboard = () => {
       };
 
       setStats(stats);
+      
+      // Generate quick insights
+      generateQuickInsights(stats, invoices);
+      
+      // Generate recent activity
+      generateRecentActivity(invoices);
+      
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -219,6 +263,90 @@ const Dashboard = () => {
       setRefreshing(false);
       setSearching(false);
     }
+  };
+
+  const generateQuickInsights = (stats, invoices) => {
+    const insights = [];
+    
+    // Calculate average invoice value
+    if (stats.totalInvoices > 0) {
+      const avgValue = stats.totalAmount / stats.totalInvoices;
+      insights.push({
+        icon: FiTarget,
+        title: 'Purata Nilai Invois',
+        value: formatCurrency(avgValue),
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50',
+        description: 'Nilai purata setiap dokumen'
+      });
+    }
+    
+    // Calculate payment rate
+    if (stats.totalInvoices > 0) {
+      const paymentRate = (stats.paidInvoices / stats.totalInvoices) * 100;
+      insights.push({
+        icon: FiAward,
+        title: 'Kadar Pembayaran',
+        value: `${Math.round(paymentRate)}%`,
+        color: paymentRate > 70 ? 'text-green-600' : paymentRate > 50 ? 'text-yellow-600' : 'text-red-600',
+        bgColor: paymentRate > 70 ? 'bg-green-50' : paymentRate > 50 ? 'bg-yellow-50' : 'bg-red-50',
+        description: 'Peratusan dokumen yang telah dibayar'
+      });
+    }
+    
+    // Check for overdue invoices
+    if (stats.overdueInvoices > 0) {
+      insights.push({
+        icon: FiBell,
+        title: 'Notifikasi Penting',
+        value: `${stats.overdueInvoices} dokumen lewat tempoh`,
+        color: 'text-red-600',
+        bgColor: 'bg-red-50',
+        description: 'Perlu tindakan segera'
+      });
+    }
+    
+    // Check for high-value invoices
+    const highValueInvoices = invoices.filter(inv => inv.total > 10000).length;
+    if (highValueInvoices > 0) {
+      insights.push({
+        icon: FiStar,
+        title: 'Invois Bernilai Tinggi',
+        value: `${highValueInvoices} dokumen`,
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-50',
+        description: 'Dokumen bernilai lebih dari RM10,000'
+      });
+    }
+    
+    setQuickInsights(insights);
+  };
+
+  const generateRecentActivity = (invoices) => {
+    const activities = [];
+    
+    // Sort invoices by creation date
+    const sortedInvoices = [...invoices].sort((a, b) => new Date(b.createdAt || b.issueDate) - new Date(a.createdAt || a.issueDate));
+    
+    // Take last 5 activities
+    sortedInvoices.slice(0, 5).forEach(invoice => {
+      const isOverdue = isOverdue(invoice);
+      const statusText = getStatusText(invoice.status);
+      
+      activities.push({
+        id: invoice._id,
+        type: 'invoice',
+        title: `${invoice.documentType === 'quote' ? 'Sebut Harga' : 'Invois'} ${invoice.invoiceNumber}`,
+        description: `${statusText} - ${invoice.clientName}`,
+        amount: invoice.total,
+        status: invoice.status,
+        isOverdue: isOverdue,
+        date: new Date(invoice.createdAt || invoice.issueDate),
+        icon: invoice.documentType === 'quote' ? FiFileText : FiDollarSign
+      });
+    });
+    
+    setRecentActivity(activities);
   };
 
   const handleRefresh = async () => {
@@ -330,6 +458,24 @@ const Dashboard = () => {
     return <span className="ml-2 inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full bg-gray-100 text-gray-700">Invois</span>;
   };
 
+  const getWeatherIcon = (condition) => {
+    switch (condition) {
+      case 'sunny': return <FiSun className="w-6 h-6 text-yellow-500" />;
+      case 'cloudy': return <FiCloud className="w-6 h-6 text-gray-500" />;
+      case 'rainy': return <FiCloudRain className="w-6 h-6 text-blue-500" />;
+      default: return <FiSun className="w-6 h-6 text-yellow-500" />;
+    }
+  };
+
+  const getWeatherColor = (condition) => {
+    switch (condition) {
+      case 'sunny': return 'from-yellow-400 to-orange-500';
+      case 'cloudy': return 'from-gray-400 to-gray-600';
+      case 'rainy': return 'from-blue-400 to-blue-600';
+      default: return 'from-yellow-400 to-orange-500';
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -404,7 +550,7 @@ const Dashboard = () => {
               <p className="text-lg text-gray-600">
                 Ringkasan pantas aktiviti dokumen anda
               </p>
-              <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                 <div className="flex items-center gap-1">
                   <FiCalendar className="w-4 h-4" />
                   <span>{new Date().toLocaleDateString('ms-MY', { 
@@ -413,6 +559,16 @@ const Dashboard = () => {
                     month: 'long', 
                     day: 'numeric' 
                   })}</span>
+                </div>
+                {weather && (
+                  <div className="flex items-center gap-1">
+                    {getWeatherIcon(weather.condition)}
+                    <span>{weather.temperature}°C - {weather.location}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1">
+                  <FiActivity className="w-4 h-4" />
+                  <span>{stats.totalInvoices} dokumen aktif</span>
                 </div>
               </div>
             </div>
@@ -469,6 +625,80 @@ const Dashboard = () => {
              
             </div>
           </div>
+        </div>
+
+        {/* Smart Notifications */}
+        {stats.overdueInvoices > 0 && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <FiBell className="w-5 h-5 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-red-800">Notifikasi Penting</h3>
+                <p className="text-sm text-red-700">
+                  Anda mempunyai <span className="font-bold">{stats.overdueInvoices}</span> dokumen lewat tempoh 
+                  dengan jumlah <span className="font-bold">{formatCurrency(stats.overdueAmount)}</span> yang perlu tindakan segera.
+                </p>
+              </div>
+              <Link 
+                to="/invoices?status=overdue" 
+                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Lihat Sekarang
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Weather Widget & Quick Insights */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+          {/* Weather Widget */}
+          {weather && (
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl p-6 shadow-lg">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold">Cuaca Hari Ini</h3>
+                  <p className="text-blue-100 text-sm">{weather.location}</p>
+                </div>
+                {getWeatherIcon(weather.condition)}
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-3xl font-bold">{weather.temperature}°C</span>
+                  <div className="text-right text-sm text-blue-100">
+                    <div className="flex items-center gap-1">
+                      <FiWind className="w-4 h-4" />
+                      {weather.windSpeed} km/h
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <FiThermometer className="w-4 h-4" />
+                      {weather.humidity}% lembap
+                    </div>
+                  </div>
+                </div>
+                <div className="text-sm text-blue-100 capitalize">
+                  {weather.condition === 'sunny' ? 'Cerah' : weather.condition === 'cloudy' ? 'Mendung' : 'Hujan'}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Insights */}
+          {quickInsights.slice(0, 3).map((insight, index) => (
+            <div key={index} className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${insight.bgColor}`}>
+                  <insight.icon className={`w-6 h-6 ${insight.color}`} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-gray-600 mb-1">{insight.title}</h3>
+                  <p className={`text-2xl font-bold ${insight.color} mb-1`}>{insight.value}</p>
+                  <p className="text-xs text-gray-500">{insight.description}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Search and Filters */}
@@ -881,6 +1111,53 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Recent Activity Timeline */}
+        {recentActivity.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <FiActivity className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Aktiviti Terkini</h3>
+                <p className="text-sm text-gray-500">Timeline aktiviti dokumen terbaru</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              {recentActivity.map((activity, index) => (
+                <div key={activity.id} className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className={`p-2 rounded-lg ${activity.isOverdue ? 'bg-red-100' : 'bg-blue-100'}`}>
+                    <activity.icon className={`w-4 h-4 ${activity.isOverdue ? 'text-red-600' : 'text-blue-600'}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium text-gray-900 truncate">{activity.title}</h4>
+                      <span className="text-xs text-gray-500">
+                        {activity.date.toLocaleDateString('ms-MY', { 
+                          day: 'numeric', 
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">{activity.description}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-sm font-semibold text-gray-900">{formatCurrency(activity.amount)}</span>
+                      {activity.isOverdue && (
+                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                          Lewat Tempoh
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Recent Documents Table */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
@@ -1031,6 +1308,63 @@ const Dashboard = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* Tips & Recommendations */}
+        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-100">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-indigo-100 rounded-lg">
+              <FiZap className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Petua & Cadangan</h3>
+              <p className="text-sm text-gray-600">Cara untuk meningkatkan kecekapan perniagaan anda</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="bg-white rounded-lg p-4 border border-indigo-100">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <FiInfo className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-1">Cepatkan Pembayaran</h4>
+                  <p className="text-xs text-gray-600">
+                    Hantar peringatan pembayaran 3 hari sebelum tarikh jatuh tempo untuk mengurangkan invois lewat tempoh.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg p-4 border border-indigo-100">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <FiTrendingUpIcon className="w-4 h-4 text-green-600" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-1">Analisis Trend</h4>
+                  <p className="text-xs text-gray-600">
+                    Pantau carta bulanan untuk mengenal pasti musim sibuk dan merancang strategi pemasaran.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg p-4 border border-indigo-100">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <FiStar className="w-4 h-4 text-purple-600" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-1">Pelanggan Utama</h4>
+                  <p className="text-xs text-gray-600">
+                    Fokus pada pelanggan yang kerap membayar tepat pada masanya untuk membina hubungan jangka panjang.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

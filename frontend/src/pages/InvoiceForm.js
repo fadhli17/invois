@@ -1929,11 +1929,22 @@ Format yang disokong:
                 onClick={async () => {
                   try {
                     setAiLoading(true);
-                    const resp = await axios.post(`${API_BASE_URL}/api/ai/generate-terms`, {
-                      documentType: watchedDocumentType,
-                      language: 'ms',
-                      notes: aiBrief
-                    });
+                    
+                    // Debug: Check document type
+                    console.log('Document type:', watchedDocumentType);
+                    const docType = watchedDocumentType || 'invoice'; // Fallback to invoice
+                    const businessType = docType === 'quote' ? 'Sebut Harga' : 'Invois';
+                    console.log('Business type:', businessType);
+                    
+                    const requestData = {
+                      businessType: businessType,
+                      language: 'malay',
+                      notes: aiBrief || ''
+                    };
+                    
+                    console.log('Request data:', requestData);
+                    
+                    const resp = await axios.post(`${API_BASE_URL}/api/ai/generate-terms`, requestData);
                     if (resp.data?.terms) {
                       setValue('termsAndConditions', resp.data.terms);
                       toast.success('Terma dan Syarat dijana');
@@ -1941,6 +1952,8 @@ Format yang disokong:
                       toast.error('Gagal menjana Terma dan Syarat');
                     }
                   } catch (err) {
+                    console.error('AI Terms Error:', err);
+                    console.error('Error response:', err?.response?.data);
                     toast.error(err?.response?.data?.message || 'Ralat AI: gagal menjana');
                   } finally {
                     setAiLoading(false);
@@ -1956,12 +1969,22 @@ Format yang disokong:
                 onClick={async () => {
                   try {
                     setAiShortLoading(true);
-                    const resp = await axios.post(`${API_BASE_URL}/api/ai/generate-terms`, {
-                      documentType: watchedDocumentType,
-                      language: 'ms',
-                      notes: aiBrief ? `${aiBrief} (ringkaskan lagi, lebih padat)` : 'Ringkaskan lagi, lebih padat',
-                      shorten: true
-                    });
+                    
+                    // Debug: Check document type
+                    console.log('Document type (short):', watchedDocumentType);
+                    const docType = watchedDocumentType || 'invoice'; // Fallback to invoice
+                    const businessType = docType === 'quote' ? 'Sebut Harga' : 'Invois';
+                    console.log('Business type (short):', businessType);
+                    
+                    const requestData = {
+                      businessType: businessType,
+                      language: 'malay',
+                      notes: aiBrief ? `${aiBrief} (ringkaskan lagi, lebih padat)` : 'Ringkaskan lagi, lebih padat'
+                    };
+                    
+                    console.log('Request data (short):', requestData);
+                    
+                    const resp = await axios.post(`${API_BASE_URL}/api/ai/generate-terms`, requestData);
                     if (resp.data?.terms) {
                       setValue('termsAndConditions', resp.data.terms);
                       toast.success('Diringkaskan (1–3 baris)');
@@ -1969,6 +1992,8 @@ Format yang disokong:
                       toast.error('Gagal ringkaskan Terma dan Syarat');
                     }
                   } catch (err) {
+                    console.error('AI Terms Short Error:', err);
+                    console.error('Error response (short):', err?.response?.data);
                     toast.error(err?.response?.data?.message || 'Ralat AI: gagal ringkaskan');
                   } finally {
                     setAiShortLoading(false);

@@ -62,7 +62,7 @@ echo -e "${GREEN}✅ MongoDB is running${NC}"
 
 # Check if backend dependencies are installed
 echo -e "${YELLOW}📦 Checking backend dependencies...${NC}"
-cd /Users/apple/Documents/invois/backend
+cd /Users/jon/Documents/invois/backend
 if [ ! -d "node_modules" ]; then
     echo -e "${YELLOW}📥 Installing backend dependencies...${NC}"
     npm install
@@ -110,7 +110,7 @@ fi
 
 # Check if frontend dependencies are installed
 echo -e "${YELLOW}📦 Checking frontend dependencies...${NC}"
-cd /Users/apple/Documents/invois/frontend
+cd /Users/jon/Documents/invois/frontend
 if [ ! -d "node_modules" ]; then
     echo -e "${YELLOW}📥 Installing frontend dependencies...${NC}"
     npm install
@@ -120,7 +120,7 @@ fi
 echo -e "${BLUE}🎨 Starting frontend server...${NC}"
 echo -e "${GREEN}🌐 Frontend will be available at http://localhost:3000${NC}"
 echo -e "${GREEN}🔗 Backend API available at http://localhost:3001${NC}"
-echo -e "${YELLOW}📝 Backend logs: tail -f /Users/apple/Documents/invois/backend/server.log${NC}"
+echo -e "${YELLOW}📝 Backend logs: tail -f /Users/jon/Documents/invois/backend/server.log${NC}"
 echo -e "${YELLOW}🛑 To stop all services: pkill -f 'node.*server.js' && pkill -f 'react-scripts'${NC}"
 echo ""
 

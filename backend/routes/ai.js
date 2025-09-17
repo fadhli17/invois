@@ -5,9 +5,32 @@ const auth = require('../middleware/auth');
 
 // Initialize MCP Server
 const mcpServer = new GroqMCPServer();
+// Expose globally for admin routes to update at runtime
+global.__groqMCPServer = mcpServer;
+
+// Middleware to check AI access
+const checkAIAccess = (req, res, next) => {
+  const aiAccessEnabled = global.__aiAccessEnabled !== undefined ? global.__aiAccessEnabled : true;
+  
+  if (!aiAccessEnabled) {
+    return res.status(403).json({
+      success: false,
+      message: 'Capaian AI telah dinonaktifkan oleh SuperAdmin'
+    });
+  }
+  
+  next();
+};
+
+// Helper: mask API key for display
+const maskKey = (key) => {
+  if (!key || typeof key !== 'string') return '';
+  if (key.length <= 8) return '*'.repeat(key.length);
+  return key.slice(0, 4) + '*'.repeat(Math.max(0, key.length - 8)) + key.slice(-4);
+};
 
 // Process AI message
-router.post('/process', auth, async (req, res) => {
+router.post('/process', auth, checkAIAccess, async (req, res) => {
   try {
     const { message, context } = req.body;
     
@@ -46,7 +69,7 @@ router.post('/process', auth, async (req, res) => {
 });
 
 // Get AI suggestions
-router.get('/suggestions', auth, async (req, res) => {
+router.get('/suggestions', auth, checkAIAccess, async (req, res) => {
   try {
     const suggestions = [
       {
@@ -95,7 +118,7 @@ router.get('/suggestions', auth, async (req, res) => {
 });
 
 // Test AI connection
-router.get('/test', auth, async (req, res) => {
+router.get('/test', auth, checkAIAccess, async (req, res) => {
   try {
     const testMessage = 'Hello, can you help me with invoices?';
     const result = await mcpServer.process(testMessage, { userId: req.user.id });
@@ -118,7 +141,7 @@ router.get('/test', auth, async (req, res) => {
 });
 
 // Get AI chat history (optional)
-router.get('/history', auth, async (req, res) => {
+router.get('/history', auth, checkAIAccess, async (req, res) => {
   try {
     // In a real implementation, you would store chat history in database
     const history = [
@@ -140,6 +163,57 @@ router.get('/history', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Ralat semasa mendapatkan sejarah chat',
+      error: error.message
+    });
+  }
+});
+
+// Generate terms and conditions
+router.post('/generate-terms', auth, checkAIAccess, async (req, res) => {
+  try {
+    const { businessType, notes, language } = req.body;
+    
+    console.log('=== GENERATE TERMS DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('Business type:', businessType);
+    console.log('Notes:', notes);
+    console.log('Language:', language);
+    
+    if (!businessType) {
+      console.log('ERROR: Business type is missing or empty');
+      return res.status(400).json({
+        success: false,
+        message: 'Business type diperlukan'
+      });
+    }
+
+    // Get user context
+    const userContext = {
+      userId: req.user.id,
+      userEmail: req.user.email,
+      userName: req.user.fullName
+    };
+
+    // Generate terms using MCP Server
+    const result = await mcpServer.generateTermsAndConditions({
+      businessType,
+      notes,
+      language: language || 'malay'
+    }, userContext);
+
+    res.json({
+      success: true,
+      terms: result.content,
+      businessType: result.businessType,
+      language: result.language,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('AI Terms Generation Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ralat semasa menjana terma dan syarat',
       error: error.message
     });
   }

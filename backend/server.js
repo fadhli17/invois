@@ -14,6 +14,7 @@ const customerRoutes = require('./routes/customers');
 const logoRoutes = require('./routes/logos');
 const uploadRoutes = require('./routes/uploads');
 const aiRoutes = require('./routes/ai');
+const superAdminRoutes = require('./routes/superAdmin');
 
 const app = express();
 
@@ -21,7 +22,7 @@ const app = express();
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:3002', 'http://192.168.68.102:3002', 'http://127.0.0.1:3000', 'http://127.0.0.1:3002'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
@@ -34,8 +35,16 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/invois', 
   useUnifiedTopology: true,
 });
 
-mongoose.connection.on('connected', () => {
+mongoose.connection.on('connected', async () => {
   console.log('Connected to MongoDB');
+  
+  // Initialize default SuperAdmin
+  try {
+    const SuperAdmin = require('./models/SuperAdmin');
+    await SuperAdmin.createDefaultSuperAdmin();
+  } catch (error) {
+    console.error('Error creating default SuperAdmin:', error);
+  }
 });
 
 mongoose.connection.on('error', (err) => {
@@ -49,6 +58,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/logos', logoRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/superadmin', superAdminRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Invoice Management System API' });
